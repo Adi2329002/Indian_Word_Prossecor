@@ -1,4 +1,5 @@
 "use client"
+import { useState } from "react";
 import { useEditorStore } from "@/store/use-editor-store"
 import { 
     LucideIcon, 
@@ -12,7 +13,8 @@ import {
     MessageSquarePlusIcon, 
     ListTodoIcon, 
     RemoveFormattingIcon,
-    Volume2Icon // <--- 1. Added this import
+    Mic, // <--- 1. Import Mic Icon
+    Volume2Icon 
 } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -27,7 +29,8 @@ const ToolbarButton=({onClick,isActive,icon:Icon}:ToolbarButtonProps)=>{
     return(
         <button onClick={onClick} className={cn(
             "text-sm h-7 min-w-7 flex items-center justify-center rounded-sm hover:bg-neutral-200/80",
-            isActive && "bg-neutral-200/80"
+            isActive && "bg-neutral-200/80",
+            isActive && "text-red-600 animate-pulse" // Red pulse when recording
         )}>
             <Icon className="size-4"/>
         </button>
@@ -36,6 +39,50 @@ const ToolbarButton=({onClick,isActive,icon:Icon}:ToolbarButtonProps)=>{
 
 export const Toolbar=()=>{
     const {editor} = useEditorStore();
+    const [isListening, setIsListening] = useState(false); // 2. State to track recording
+
+    // 3. The Voice Typing Logic
+    const handleVoiceTyping = () => {
+        // Check if browser supports speech recognition
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            alert("Your browser doesn't support Voice Typing. Please use Chrome.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'hi-IN'; // <--- SETS LANGUAGE TO HINDI
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        if (isListening) {
+            recognition.stop();
+            setIsListening(false);
+            return;
+        }
+
+        recognition.onstart = () => {
+            setIsListening(true);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            // Insert the spoken text at cursor position
+            editor?.chain().focus().insertContent(transcript + ' ').run();
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error("Speech error:", event.error);
+            setIsListening(false);
+        };
+
+        recognition.start();
+    };
 
     const sections:{
         label: string; 
@@ -73,23 +120,26 @@ export const Toolbar=()=>{
                     editor?.view.dom.setAttribute("spellcheck",current==="false"?"true":"false"); 
                 }
             },
-            // --- NEW BUTTON ADDED HERE ---
+            // --- NEW MIC BUTTON ---
+            {
+                label: "Voice Typing",
+                icon: Mic,
+                onClick: handleVoiceTyping,
+                isActive: isListening // Turns red when active
+            },
+            // ----------------------
             {
                 label: "Read Aloud",
                 icon: Volume2Icon,
                 onClick: () => {
                     const text = editor?.getText();
                     if (!text) return;
-                    
-                    // Stop any current speech
                     window.speechSynthesis.cancel();
-                    
                     const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'hi-IN'; // Sets it to Hindi for your Indian context
+                    utterance.lang = 'hi-IN'; 
                     window.speechSynthesis.speak(utterance);
                 }
             }
-            // -----------------------------
         ],
         [
             {
@@ -152,23 +202,11 @@ export const Toolbar=()=>{
                 ))
             }
             <Separator orientation="vertical" className="h-6 bg-neutral-300"/>
-            {/*TODO: Font Family*/}
-            <Separator orientation="vertical" className="h-6 bg-neutral-300"/>
-            {/*TODO: Font Color*/}
-            <Separator orientation="vertical" className="h-6 bg-neutral-300"/>
-            {/*TODO: Font Size*/}
-            <Separator orientation="vertical" className="h-6 bg-neutral-300"/>
+            {/* ... other sections ... */}
             {sections[1].map((item)=>(
                 <ToolbarButton key={item.label} {...item}/>
             ))}
-            {/*TODO: text color */}
-            {/*TODO: Highlight color*/}
             <Separator orientation="vertical" className="h-6 bg-neutral-300"/>
-            {/*TODO: Link */}
-            {/*TODO: Image */}
-            {/*TODO: Align */}
-            {/*TODO: Line Height */}
-            {/*TODO: List */}
             {sections[2].map((item)=>(
                 <ToolbarButton key={item.label} {...item}/>
             ))}

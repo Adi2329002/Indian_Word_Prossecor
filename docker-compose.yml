@@ -1,0 +1,11 @@
+version: '3'
+services:
+  web:
+    build:
+      context: .
+      args:
+        # Paste your real keys here!
+        NEXT_PUBLIC_CONVEX_URL: "https://cursor.com/en-US/install-mcp?name=clerk&config=eyJ1cmwiOiJodHRwczovL21jcC5jbGVyay5jb20vbWNwIn0%3D"
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cG9saXNoZWQtbGlvbmZpc2gtNjYuY2xlcmsuYWNjb3VudHMuZGV2JA"
+    ports:
+      - "3000:3000"
