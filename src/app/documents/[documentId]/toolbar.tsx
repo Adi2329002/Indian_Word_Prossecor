@@ -1,8 +1,22 @@
 "use client"
 import { useEditorStore } from "@/store/use-editor-store"
-import { LucideIcon, PrinterIcon, Redo2Icon, Undo2Icon,SpellCheckIcon, BoldIcon, ItalicIcon, UnderlineIcon, MessageSquarePlusIcon, ListTodoIcon, RemoveFormattingIcon } from "lucide-react"
+import { 
+    LucideIcon, 
+    PrinterIcon, 
+    Redo2Icon, 
+    Undo2Icon,
+    SpellCheckIcon, 
+    BoldIcon, 
+    ItalicIcon, 
+    UnderlineIcon, 
+    MessageSquarePlusIcon, 
+    ListTodoIcon, 
+    RemoveFormattingIcon,
+    Volume2Icon // <--- 1. Added this import
+} from "lucide-react"
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+
 interface ToolbarButtonProps {
     onClick: () => void;
     isActive?: boolean;
@@ -52,13 +66,30 @@ export const Toolbar=()=>{
                 }
             },
             {
-                label:"Spell  Check",
+                label:"Spell Check",
                 icon:SpellCheckIcon,
                 onClick:()=>{
                     const current=editor?.view.dom.getAttribute("spellcheck");
                     editor?.view.dom.setAttribute("spellcheck",current==="false"?"true":"false"); 
                 }
             },
+            // --- NEW BUTTON ADDED HERE ---
+            {
+                label: "Read Aloud",
+                icon: Volume2Icon,
+                onClick: () => {
+                    const text = editor?.getText();
+                    if (!text) return;
+                    
+                    // Stop any current speech
+                    window.speechSynthesis.cancel();
+                    
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'hi-IN'; // Sets it to Hindi for your Indian context
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+            // -----------------------------
         ],
         [
             {
@@ -112,6 +143,7 @@ export const Toolbar=()=>{
             },
         ]
     ];
+
     return (
         <div className="bg-[#F1F4F9] px-2.5 py-0.5 rounded-[24px] min-h-[40px] flex items-center gap-x-0.5 overflow-x-auto">
             {
