@@ -1,6 +1,7 @@
-"use client"
+"use client";
+
 import { useState } from "react";
-import { useEditorStore } from "@/store/use-editor-store"
+import { useEditorStore } from "@/store/use-editor-store";
 import { 
     LucideIcon, 
     PrinterIcon, 
@@ -13,203 +14,144 @@ import {
     MessageSquarePlusIcon, 
     ListTodoIcon, 
     RemoveFormattingIcon,
-    Mic, // <--- 1. Import Mic Icon
-    Volume2Icon 
-} from "lucide-react"
+    Mic,
+    Volume2Icon,
+    FileTextIcon,
+    HomeIcon,
+    ChevronDown
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
+// --- Sub-component: Font Family Dropdown ---
+const FontFamilyButton = () => {
+    const { editor } = useEditorStore();
+
+    const fonts = [
+        { label: "Arial", value: "Arial" },
+        { label: "Times New Roman", value: "Times New Roman" },
+        { label: "Courier New", value: "Courier New" },
+        { label: "Mangal (Hindi)", value: "Mangal" },
+        { label: "Devanagari", value: "Noto Sans Devanagari" },
+    ];
+
+    if (!editor) return null;
+
+    // This dynamically finds the current font family to show in the menu
+    const currentFont = editor.getAttributes("textStyle").fontFamily || "Arial";
+
+    return (
+        <div className="flex items-center gap-x-1 px-2 hover:bg-neutral-200/80 rounded-sm cursor-pointer h-7 transition border border-neutral-300 bg-white">
+            <select 
+                onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
+                className="bg-transparent text-xs outline-none cursor-pointer min-w-[100px]"
+                value={currentFont}
+            >
+                {fonts.map((font) => (
+                    <option key={font.value} value={font.value}>
+                        {font.label}
+                    </option>
+                ))}
+            </select>
+            <ChevronDown className="size-3 text-neutral-500 ml-1" />
+        </div>
+    );
+};
+
+// --- Sub-component: Toolbar Button ---
 interface ToolbarButtonProps {
     onClick: () => void;
     isActive?: boolean;
     icon: LucideIcon;
-};
-
-const ToolbarButton=({onClick,isActive,icon:Icon}:ToolbarButtonProps)=>{
-    return(
-        <button onClick={onClick} className={cn(
-            "text-sm h-7 min-w-7 flex items-center justify-center rounded-sm hover:bg-neutral-200/80",
-            isActive && "bg-neutral-200/80",
-            isActive && "text-red-600 animate-pulse" // Red pulse when recording
-        )}>
-            <Icon className="size-4"/>
-        </button>
-    )
+    label?: string;
+    showLabel?: boolean;
 }
 
-export const Toolbar=()=>{
-    const {editor} = useEditorStore();
-    const [isListening, setIsListening] = useState(false); // 2. State to track recording
+const ToolbarButton = ({ onClick, isActive, icon: Icon, label, showLabel }: ToolbarButtonProps) => {
+    return (
+        <button 
+            onClick={onClick} 
+            className={cn(
+                "text-sm h-7 px-2 flex items-center justify-center gap-x-2 rounded-sm hover:bg-neutral-200/80 transition",
+                isActive && "bg-neutral-200/80",
+                isActive && label === "Voice Typing" && "text-red-600 animate-pulse"
+            )}
+        >
+            <Icon className="size-4" />
+            {showLabel && <span className="text-xs font-medium">{label}</span>}
+        </button>
+    );
+};
 
-    // 3. The Voice Typing Logic
+export const Toolbar = () => {
+    const { editor } = useEditorStore();
+    const [isListening, setIsListening] = useState(false);
+
+    if (!editor) return null;
+
     const handleVoiceTyping = () => {
-        // Check if browser supports speech recognition
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        
         if (!SpeechRecognition) {
-            alert("Your browser doesn't support Voice Typing. Please use Chrome.");
+            alert("Speech recognition not supported in this browser.");
             return;
         }
-
         const recognition = new SpeechRecognition();
-        recognition.lang = 'hi-IN'; // <--- SETS LANGUAGE TO HINDI
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        if (isListening) {
-            recognition.stop();
-            setIsListening(false);
-            return;
-        }
-
-        recognition.onstart = () => {
-            setIsListening(true);
-        };
-
-        recognition.onend = () => {
-            setIsListening(false);
-        };
-
+        recognition.lang = 'hi-IN';
+        if (isListening) { recognition.stop(); return; }
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
         recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
-            // Insert the spoken text at cursor position
-            editor?.chain().focus().insertContent(transcript + ' ').run();
+            editor.chain().focus().insertContent(transcript + ' ').run();
         };
-
-        recognition.onerror = (event: any) => {
-            console.error("Speech error:", event.error);
-            setIsListening(false);
-        };
-
         recognition.start();
     };
 
-    const sections:{
-        label: string; 
-        icon:LucideIcon; 
-        onClick:()=>void;
-        isActive?:boolean;
-    }[][]=[
-        [
-            {
-                label:"Undo",
-                icon: Undo2Icon,
-                onClick:()=>{
-                    editor?.chain().focus().undo().run(); 
-                }
-            },
-            {
-                label:"Redo",
-                icon: Redo2Icon,
-                onClick:()=>{
-                    editor?.chain().focus().redo().run(); 
-                }
-            },
-            {
-                label:"Print",
-                icon:PrinterIcon,
-                onClick:()=>{
-                    window.print(); 
-                }
-            },
-            {
-                label:"Spell Check",
-                icon:SpellCheckIcon,
-                onClick:()=>{
-                    const current=editor?.view.dom.getAttribute("spellcheck");
-                    editor?.view.dom.setAttribute("spellcheck",current==="false"?"true":"false"); 
-                }
-            },
-            // --- NEW MIC BUTTON ---
-            {
-                label: "Voice Typing",
-                icon: Mic,
-                onClick: handleVoiceTyping,
-                isActive: isListening // Turns red when active
-            },
-            // ----------------------
-            {
-                label: "Read Aloud",
-                icon: Volume2Icon,
-                onClick: () => {
-                    const text = editor?.getText();
+    return (
+        <div className="flex flex-col gap-y-1 bg-[#F1F4F9] p-1 shadow-sm border-b border-neutral-300">
+            {/* TOP LINE: Main Navigation/Menu */}
+            <div className="flex items-center gap-x-1 px-2">
+                <ToolbarButton label="File" showLabel icon={FileTextIcon} onClick={() => {}} />
+                <ToolbarButton label="Home" showLabel icon={HomeIcon} onClick={() => {}} isActive />
+                <div className="flex-grow" /> {/* Spacer */}
+                <span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">Indian Word Processor</span>
+            </div>
+
+            <Separator className="bg-neutral-300" />
+
+            {/* BOTTOM LINE: Formatting Tools */}
+            <div className="flex items-center gap-x-0.5 px-2 py-0.5 overflow-x-auto">
+                <ToolbarButton icon={Undo2Icon} onClick={() => editor.chain().focus().undo().run()} />
+                <ToolbarButton icon={Redo2Icon} onClick={() => editor.chain().focus().redo().run()} />
+                <ToolbarButton icon={PrinterIcon} onClick={() => window.print()} />
+                
+                <Separator orientation="vertical" className="h-6 bg-neutral-300 mx-1" />
+
+                <FontFamilyButton />
+
+                <Separator orientation="vertical" className="h-6 bg-neutral-300 mx-1" />
+
+                <ToolbarButton icon={BoldIcon} onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} />
+                <ToolbarButton icon={ItalicIcon} onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} />
+                <ToolbarButton icon={UnderlineIcon} onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")} />
+
+                <Separator orientation="vertical" className="h-6 bg-neutral-300 mx-1" />
+
+                <ToolbarButton label="Voice Typing" icon={Mic} onClick={handleVoiceTyping} isActive={isListening} />
+                <ToolbarButton icon={Volume2Icon} onClick={() => {
+                    const text = editor.getText();
                     if (!text) return;
                     window.speechSynthesis.cancel();
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'hi-IN'; 
-                    window.speechSynthesis.speak(utterance);
-                }
-            }
-        ],
-        [
-            {
-                label:"Bold",
-                icon:BoldIcon,
-                onClick:()=>{
-                    editor?.chain().focus().toggleBold().run();
-                },
-                isActive:editor?.isActive("bold")
-            },
-            {
-                label:"Italic",
-                icon:ItalicIcon,
-                onClick:()=>{
-                    editor?.chain().focus().toggleItalic().run();
-                },
-                isActive:editor?.isActive("italic")
-            },
-            {
-                label:"Underline",
-                icon:UnderlineIcon,
-                onClick:()=>{
-                    editor?.chain().focus().toggleUnderline().run();
-                },
-                isActive:editor?.isActive("underline")
-            },
-        ],
-        [
-            {
-                label:"Comment",
-                icon:MessageSquarePlusIcon,
-                onClick:()=>{
-                    console.log("TODO:Comment")
-                },
-                isActive:false
-            },
-            {
-                label:"List Todo",
-                icon:ListTodoIcon,
-                onClick:()=>{
-                    editor?.chain().focus().toggleTaskList().run();
-                },
-                isActive:editor?.isActive("taskList")
-            },
-            {
-                label:"Remove Formatting",
-                icon:RemoveFormattingIcon,
-                onClick:()=>{
-                    editor?.chain().focus().clearNodes().unsetAllMarks().run();
-                },
-            },
-        ]
-    ];
+                    const ut = new SpeechSynthesisUtterance(text);
+                    ut.lang = 'hi-IN';
+                    window.speechSynthesis.speak(ut);
+                }} />
 
-    return (
-        <div className="bg-[#F1F4F9] px-2.5 py-0.5 rounded-[24px] min-h-[40px] flex items-center gap-x-0.5 overflow-x-auto">
-            {
-                sections[0].map((item)=>(
-                    <ToolbarButton key={item.label} {...item}/>
-                ))
-            }
-            <Separator orientation="vertical" className="h-6 bg-neutral-300"/>
-            {/* ... other sections ... */}
-            {sections[1].map((item)=>(
-                <ToolbarButton key={item.label} {...item}/>
-            ))}
-            <Separator orientation="vertical" className="h-6 bg-neutral-300"/>
-            {sections[2].map((item)=>(
-                <ToolbarButton key={item.label} {...item}/>
-            ))}
+                <Separator orientation="vertical" className="h-6 bg-neutral-300 mx-1" />
+
+                <ToolbarButton icon={ListTodoIcon} onClick={() => editor.chain().focus().toggleTaskList().run()} isActive={editor.isActive("taskList")} />
+                <ToolbarButton icon={RemoveFormattingIcon} onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()} />
+            </div>
         </div>
-    )
-}
+    );
+};
