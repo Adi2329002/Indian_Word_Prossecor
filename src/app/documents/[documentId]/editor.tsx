@@ -9,13 +9,17 @@ import ImageResize from 'tiptap-extension-resize-image'
 import { useEditorStore } from '@/store/use-editor-store'
 import { IndicTransliteration } from '@/extensions/indic-transliteration' 
 
-// --- NEW IMPORTS FOR DATABASE ---
-import { useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";         // <--- Added two more ../
-import { Id } from "../../../../convex/_generated/dataModel";   // <--- Added two more ../
-import { useRef } from "react"; // For the timer
+// --- NEW EXTENSIONS TO FIX FONT ERRORS ---
+import FontFamily from '@tiptap/extension-font-family'
+import {TextStyle} from '@tiptap/extension-text-style'
+import Underline from '@tiptap/extension-underline'
 
-// Define the props this component expects
+// --- DATABASE IMPORTS ---
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api"; 
+import { Id } from "../../../../convex/_generated/dataModel"; 
+import { useRef } from "react"; 
+
 interface EditorProps {
   documentId: Id<"documents">;
   initialContent?: string;
@@ -24,31 +28,25 @@ interface EditorProps {
 export const Editor = ({ documentId, initialContent }: EditorProps) => {
     const { setEditor } = useEditorStore();
     
-    // 1. Get the update function from backend
     const update = useMutation(api.documents.update);
-    
-    // 2. Create a reference for the auto-save timer
     const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const editor = useEditor({
         onCreate({ editor }) { setEditor(editor); },
         onDestroy() { setEditor(null); },
         
-        // --- 3. THE AUTO-SAVE LOGIC ---
         onUpdate({ editor }) { 
             setEditor(editor);
             
-            // Clear the previous timer (cancel the save if you kept typing)
             if (saveTimerRef.current) {
                 clearTimeout(saveTimerRef.current);
             }
 
-            // Set a new timer to save in 2 seconds
             saveTimerRef.current = setTimeout(() => {
                 console.log("Auto-saving...");
                 update({ 
                     id: documentId, 
-                    content: JSON.stringify(editor.getJSON()) // Convert doc to string
+                    content: JSON.stringify(editor.getJSON()) 
                 })
                 .then(() => console.log("Saved!"))
                 .catch(() => console.error("Save failed"));
@@ -69,6 +67,9 @@ export const Editor = ({ documentId, initialContent }: EditorProps) => {
         },
         extensions: [
             StarterKit,
+            TextStyle,    // <--- REQUIRED for Font Family
+            FontFamily,   // <--- FIXES setFontFamily error
+            Underline,    // <--- FIXES Underline error
             TaskList,
             TaskItem.configure({ nested: true }),
             IndicTransliteration, 
@@ -82,7 +83,6 @@ export const Editor = ({ documentId, initialContent }: EditorProps) => {
             }),
             Image
         ],
-        // 4. Load the real content from the database (or default to Hindi greeting)
         content: initialContent ? JSON.parse(initialContent) : '<p>नमस्ते India! Start typing...</p>',
         immediatelyRender: false,
     })
