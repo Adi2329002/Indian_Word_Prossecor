@@ -21,10 +21,12 @@ import TaskItem from "@tiptap/extension-task-item"
 import Subscript from "@tiptap/extension-subscript"
 import Superscript from "@tiptap/extension-superscript"
 import Placeholder from "@tiptap/extension-placeholder"
+import { useLiveblocksExtension } from "@liveblocks/react-tiptap";
+import { Liveblocks } from "@liveblocks/node"
 
 export const Editor = () => {
   const { setEditor } = useEditorStore()
-
+  const liveblocks = useLiveblocksExtension()
   const editor = useEditor({
     onCreate({ editor }) {
       setEditor(editor)
@@ -43,7 +45,9 @@ export const Editor = () => {
       },
     },
     extensions: [
+      liveblocks,
       StarterKit.configure({
+        history: false,
         bulletList: {
           keepMarks: true,
           keepAttributes: false,
@@ -81,7 +85,6 @@ export const Editor = () => {
         placeholder: "यहाँ टाइप करें... Start typing here...",
       }),
     ],
-    content: "<p>नमस्ते India!</p>",
     immediatelyRender: false,
   })
 
