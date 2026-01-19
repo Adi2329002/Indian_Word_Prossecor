@@ -16,7 +16,7 @@ export default function DocumentIdPage({ params }: DocumentIdPageProps) {
   const unwrappedParams = use(params);
   
   const document = useQuery(api.documents.getById, {
-    documentId: unwrappedParams.documentId,
+    documentId: unwrappedParams.documentId as Id<"documents">,
   });
 
   if (document === undefined) {
