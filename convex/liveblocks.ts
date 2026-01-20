@@ -3,7 +3,7 @@ import { action } from "./_generated/server";
 import { Liveblocks } from "@liveblocks/node";
 
 const liveblocks = new Liveblocks({
-  secret: "sk_dev_LmavdhN22Szapux4sdNCYFK40Kme7eNpjhXAlG9oqP3etLDRGDANog4A84BGPPNG",
+  secret: process.env.LIVEBLOCKS_SECRET_KEY!,
 });
 
 export const auth = action({
@@ -23,7 +23,7 @@ export const auth = action({
     // Grant full access to this specific room
     session.allow(args.roomId, session.FULL_ACCESS);
 
-    const { body, status } = await session.authorize();
+    const { body} = await session.authorize();
     return JSON.parse(body);
   },
 });
