@@ -35,7 +35,7 @@ export default function DocumentIdPage({ params }: DocumentIdPageProps) {
     // Pass the resolved documentId to the Room
     <Room roomId={unwrappedParams.documentId}>
       <div className="min-h-screen bg-[#F9FBFD]">
-        <div className="flex flex-col px-4 pt-2 gap-y-2 fixed top-0 left-0 right-0 z-10 bg-[#fafbfd] print:hidden">
+        <div className="flex flex-col fixed top-0 left-0 right-0 z-50 bg-[#fafbfd] print:hidden">
            <Toolbar />
         </div>
         

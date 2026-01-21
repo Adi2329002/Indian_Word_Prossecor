@@ -31,7 +31,13 @@ export const IndicTransliteration = Extension.create({
                 if (dispatch) {
                   // 3. Delete English word -> Insert Hindi word + Space
                   const start = from - lastWord.length
-                  tr.insertText(hindiWord + ' ', start, from) 
+                  const docSize = tr.doc.content.size;
+                  if (start >= 0 && from <= docSize) {
+                      tr.insertText(hindiWord + ' ', start, from);
+                  } else {
+                      console.warn("Transliteration range out of bounds", { start, from, docSize });
+                      return false; // Or handle the error gracefully
+                  } 
                 }
                 return true
               })

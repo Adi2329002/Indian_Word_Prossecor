@@ -68,7 +68,7 @@ const HIGHLIGHT_COLORS = [
   "#ffff00", "#00ff00", "#00ffff", "#ff00ff", "#ff0000", "#0000ff",
   "#ffa500", "#800080", "#ffc0cb", "#90ee90", "#add8e6", "#ffb6c1",
 ]
-
+const LINE_HEIGHTS = ["1.0", "1.15", "1.2", "1.5", "2.0", "2.5"];
 export const Toolbar = () => {
   const { editor } = useEditorStore()
   const [activeTab, setActiveTab] = useState("home")
@@ -108,6 +108,7 @@ export const Toolbar = () => {
       recognition.stop()
       return
     }
+  
 
     recognition.onstart = () => setIsListening(true)
     recognition.onend = () => setIsListening(false)
@@ -360,13 +361,16 @@ export const Toolbar = () => {
             </select>
 
             {/* Font Size */}
+            {/* Font Size Selection in toolbar.tsx */}
             <select
               onChange={(e) => {
-                const size = e.target.value
-                editor.chain().focus().setMark("textStyle", { fontSize: `${size}px` }).run()
+                const size = e.target.value;
+                // Use the custom command we defined in the extension
+                editor.chain().focus().setFontSize(`${size}px`).run();
               }}
               className="bg-neutral-50 border text-xs p-1.5 rounded w-[65px] font-medium focus:border-[#1a5276] focus:outline-none"
-              defaultValue="14"
+              // Keep the dropdown value synced with current selection
+              value={editor.getAttributes("textStyle").fontSize?.replace("px", "") || "14"}
             >
               {FONT_SIZES.map((size) => (
                 <option key={size} value={size}>
@@ -374,6 +378,23 @@ export const Toolbar = () => {
                 </option>
               ))}
             </select>
+            {/* Line Height Dropdown */}
+            <div className="flex items-center gap-1 border-l pl-2 ml-1">
+              <span className="text-[10px] text-neutral-500 font-bold uppercase">Line</span>
+              <select
+                onChange={(e) => {
+                  editor.chain().focus().setLineHeight(e.target.value).run();
+                }}
+                className="bg-neutral-50 border text-xs p-1.5 rounded w-[60px] font-medium focus:border-[#1a5276] focus:outline-none"
+                value={editor.getAttributes("paragraph").lineHeight || "1.15"}
+              >
+                {LINE_HEIGHTS.map((height) => (
+                  <option key={height} value={height}>
+                    {height}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Separator orientation="vertical" className="h-6 mx-1" />
 
             {/* Text Color */}
