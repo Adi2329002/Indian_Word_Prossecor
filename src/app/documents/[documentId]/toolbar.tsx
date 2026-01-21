@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef,useEffect } from "react"
 import { useEditorStore } from "@/store/use-editor-store"
 import {
   Undo2Icon,
@@ -76,6 +76,16 @@ export const Toolbar = () => {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [searchText, setSearchText] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
+  // 2. Create a reference to hold the recognition object
+  const recognitionRef = useRef<any>(null);
+  useEffect(() => {
+    return () => {
+      // This cleanup function runs when the component unmounts
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [])
 
   const indianFonts = [
     { label: "Hindi (Mangal)", value: "Mangal" },
@@ -92,28 +102,54 @@ export const Toolbar = () => {
     { label: "English (Times)", value: "Times New Roman" },
   ]
 
-  const handleVoiceTyping = useCallback(() => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+const handleVoiceTyping = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    
     if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in your browser.")
+      alert("Speech recognition is not supported.")
       return
     }
-    const recognition = new SpeechRecognition()
-    recognition.lang = "hi-IN"
-    recognition.continuous = false
-    recognition.interimResults = false
 
+    // 3. TOGGLE LOGIC: If it's already listening, stop the EXISTING instance
     if (isListening) {
-      recognition.stop()
-      return
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
     }
+
+    // 4. START LOGIC: Create the instance and store it in the ref
+    const recognition = new SpeechRecognition()
+    recognitionRef.current = recognition; // Save it here!
+
+    recognition.lang = "hi-IN"
+    recognition.continuous = true; 
+    recognition.interimResults = true;
 
     recognition.onstart = () => setIsListening(true)
-    recognition.onend = () => setIsListening(false)
+    
     recognition.onresult = (event: any) => {
-      editor?.chain().focus().insertContent(event.results[0][0].transcript + " ").run()
+      const transcript = Array.from(event.results)
+        .slice(event.resultIndex)
+        .map((result: any) => result[0])
+        .map((result) => result.transcript)
+        .join("")
+
+      if (event.results[event.results.length - 1].isFinal && editor) {
+        editor.chain().focus().insertContent(transcript + " ").run()
+      }
     }
+
+    recognition.onerror = (event: any) => {
+      console.error(event.error)
+      setIsListening(false)
+    }
+
+    // Reset UI if the recognition ends naturally (e.g., silence)
+    recognition.onend = () => {
+      setIsListening(false)
+      recognitionRef.current = null;
+    }
+
     recognition.start()
   }, [editor, isListening])
 
@@ -454,10 +490,11 @@ export const Toolbar = () => {
 
             {/* Voice Features */}
             <ToolbarButton
-              icon={Mic}
-              onClick={handleVoiceTyping}
-              active={isListening}
-              tooltip="Voice Input / आवाज इनपुट"
+            icon={Mic}
+            onClick={handleVoiceTyping}
+            active={isListening}
+            tooltip={isListening ? "Listening... / सुन रहा हूँ..." : "Voice Input / आवाज इनपुट"}
+            // Optional: add a class to pulse if listening
             />
             <ToolbarButton
               icon={Volume2Icon}
