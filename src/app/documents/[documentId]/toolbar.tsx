@@ -295,16 +295,21 @@ const handleVoiceTyping = useCallback(() => {
   return (
     <div className="flex flex-col bg-[#F1F4F9] border-b border-neutral-300 shadow-sm">
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#1a5276] text-white">
-        <div className="flex items-center gap-3">
-          <FileTextIcon className="size-6" />
-          <span className="font-semibold text-lg">भारतीय वर्ड प्रोसेसर</span>
+      <div className="flex items-center justify-between px-4 py-1 bg-white text-white">
+        <div className="flex items-center whitespace-nowrap">
+          <img
+            src="/logo.png"
+            alt="Bharat Docs Logo"
+            className="h-10 w-12 "
+          />
+          <span className=" font-bold text-lg text-[#F69836]">Bharat</span>
+          <span className="text-lg text-[#2F87C7]">Docs</span>
         </div>
-        <span className="text-xs opacity-80 tracking-wide">INDIAN WORD PROCESSOR</span>
+
       </div>
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-x-1 px-2 pt-1 bg-[#E8ECF1]">
+      <div className="flex items-center gap-x-1 px-2 pt-1 bg-slate-100">
         {["file", "home", "insert", "view"].map((tab) => (
           <button
             key={tab}
@@ -313,8 +318,8 @@ const handleVoiceTyping = useCallback(() => {
             className={cn(
               "px-4 py-1.5 text-sm rounded-t-md transition capitalize",
               activeTab === tab
-                ? "bg-white font-semibold text-[#1a5276] border-x border-t border-neutral-300"
-                : "hover:bg-neutral-200 text-neutral-600"
+                ? "bg-slate-200 font-semibold text-[#1a5276] border-x border-t border-neutral-300"
+                : "hover:bg-white text-neutral-600"
             )}
           >
             {tab === "file" ? "File / फ़ाइल" : tab === "home" ? "Home / होम" : tab === "insert" ? "Insert / डालें" : "View / देखें"}
@@ -323,7 +328,7 @@ const handleVoiceTyping = useCallback(() => {
       </div>
 
       {/* Toolbar Content */}
-      <div className="flex items-center gap-x-2 px-3 py-2 min-h-[52px] bg-white border-t border-neutral-200 flex-wrap">
+      <div className="flex items-center gap-x-2 px-3 py-2 bg-slate-200 border-t border-neutral-200 flex-wrap">
         {/* FILE TAB */}
         {activeTab === "file" && (
           <>
