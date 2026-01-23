@@ -23,9 +23,48 @@ import {
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
+import { useLanguageStore } from "@/store/use-language-store";
+
+// --- Sub-component: Language Dropdown ---
+const LanguageButton = () => {
+    const { language, setLanguage } = useLanguageStore();
+
+    const languages = [
+        { label: "Hindi", value: "hi" },
+        { label: "Tamil", value: "ta" },
+        { label: "Telugu", value: "te" },
+        { label: "Bengali", value: "bn" },
+        { label: "Gujarati", value: "gu" },
+        { label: "Kannada", value: "kn" },
+        { label: "Malayalam", value: "ml" },
+        { label: "Marathi", value: "mr" },
+        { label: "Punjabi", value: "pa" },
+        { label: "Sanskrit", value: "sa" },
+    ];
+
+    return (
+        <div className="flex items-center gap-x-1 px-2 hover:bg-neutral-200/80 rounded-sm cursor-pointer h-7 transition border border-neutral-300 bg-white">
+            <select
+                onChange={(e) => setLanguage(e.target.value)}
+                className="bg-transparent text-xs outline-none cursor-pointer min-w-[100px]"
+                value={language}
+            >
+                {languages.map((lang) => (
+                    <option key={lang.value} value={lang.value}>
+                        {lang.label}
+                    </option>
+                ))}
+            </select>
+            <ChevronDown className="size-3 text-neutral-500 ml-1" />
+        </div>
+    );
+};
+
+
 // --- Sub-component: Font Family Dropdown ---
 const FontFamilyButton = () => {
     const { editor } = useEditorStore();
+
 
     const fonts = [
         { label: "Arial", value: "Arial" },
@@ -127,6 +166,7 @@ export const Toolbar = () => {
                 
                 <Separator orientation="vertical" className="h-6 bg-neutral-300 mx-1" />
 
+                <LanguageButton />
                 <FontFamilyButton />
 
                 <Separator orientation="vertical" className="h-6 bg-neutral-300 mx-1" />
