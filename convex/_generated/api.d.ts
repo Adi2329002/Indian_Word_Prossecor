@@ -9,7 +9,7 @@
  */
 
 import type * as documents from "../documents.js";
-import type * as tasks from "../tasks.js";
+import type * as liveblocks from "../liveblocks.js";
 
 import type {
   ApiFromModules,
@@ -19,7 +19,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   documents: typeof documents;
-  tasks: typeof tasks;
+  liveblocks: typeof liveblocks;
 }>;
 
 /**
