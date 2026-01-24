@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  swcMinify: false,
+  
   
   // 👇 ADD THESE LINES TO IGNORE ERRORS
   eslint: {
