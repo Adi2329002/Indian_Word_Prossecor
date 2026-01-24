@@ -40,6 +40,7 @@ import {
   CopyIcon,
   ScissorsIcon,
   ClipboardIcon,
+  Languages,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
@@ -57,6 +58,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { translations } from "@/lib/translations"
+import { translateText } from "@/lib/translate"
 
 const FONT_SIZES = ["10", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "72"]
 
@@ -155,6 +157,20 @@ const handleVoiceTyping = useCallback(() => {
 
     recognition.start()
   }, [editor, isListening, language])
+
+  const handleTranslate = useCallback(async () => {
+    if (!editor) return;
+    const text = editor.getText();
+    if (!text) return;
+
+    try {
+      const translatedText = await translateText(text, 'en', language.code);
+      editor.chain().focus().setContent(translatedText).run();
+    } catch (error) {
+      console.error("Translation failed", error);
+      alert("Translation failed. Please try again.");
+    }
+  }, [editor, language]);
 
   const handleReadAloud = useCallback(() => {
     if (!("speechSynthesis" in window)) {
@@ -415,6 +431,9 @@ const handleVoiceTyping = useCallback(() => {
                 </option>
               ))}
             </select>
+
+            {/* Translate Button */}
+            <ToolbarButton icon={Languages} onClick={handleTranslate} tooltip="Translate / अनुवाद" />
 
             {/* Font Size */}
             <select
