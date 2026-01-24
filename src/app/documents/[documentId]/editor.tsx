@@ -23,9 +23,12 @@ import Superscript from "@tiptap/extension-superscript"
 import Placeholder from "@tiptap/extension-placeholder"
 import { useLiveblocksExtension } from "@liveblocks/react-tiptap";
 import { Liveblocks } from "@liveblocks/node"
-
+import { SearchHighlight } from "@/extensions/search-highlight"
+import { useState } from "react"
 export const Editor = () => {
-  const { setEditor } = useEditorStore()
+  const { setEditor, zoom, wideMode } = useEditorStore()
+
+
   const liveblocks = useLiveblocksExtension()
   const editor = useEditor({
     onCreate({ editor }) {
@@ -40,8 +43,10 @@ export const Editor = () => {
     editorProps: {
       attributes: {
         style: "padding-left: 56px; padding-right: 56px;",
-        class:
-          "focus:outline-none bg-white border border-[#C7C7C7] flex flex-col min-h-[1054px] w-[816px] pt-10 pr-14 pb-10 cursor-text shadow-sm mx-auto prose prose-sm max-w-none",
+      class:
+  "focus:outline-none bg-white dark:bg-[#1e293b] border border-[#C7C7C7] dark:border-[#334155] flex flex-col min-h-[1054px] w-[816px] pt-10 pr-14 pb-10 cursor-text shadow-sm dark:shadow-2xl mx-auto prose prose-sm max-w-none transition-colors duration-300",
+
+
       },
     },
     extensions: [
@@ -84,13 +89,28 @@ export const Editor = () => {
       Placeholder.configure({
         placeholder: "यहाँ टाइप करें... Start typing here...",
       }),
+      SearchHighlight.configure({
+  searchTerm: "",
+}),
     ],
     immediatelyRender: false,
   })
 
-  return (
-    <div className="size-full overflow-x-auto bg-[#F9FBFD] px-4 py-6">
+return (
+  <div className="size-full overflow-x-auto bg-[#F9FBFD] dark:bg-[#0f172a] px-4 py-6 transition-colors duration-300">
+    <div
+      className="transition-all duration-300 mx-auto"
+      style={{
+        transform: `scale(${zoom / 100})`,
+        transformOrigin: "top center",
+        width: wideMode ? "100%" : "816px",
+      }}
+    >
       <EditorContent editor={editor} />
     </div>
-  )
+  </div>
+)
+
+
 }
+

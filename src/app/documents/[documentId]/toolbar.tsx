@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 
 import { useState, useCallback, useRef,useEffect } from "react"
 import { useEditorStore } from "@/store/use-editor-store"
@@ -70,12 +71,21 @@ const HIGHLIGHT_COLORS = [
 ]
 
 export const Toolbar = () => {
-  const { editor } = useEditorStore()
+  const { editor, zoom, setZoom, wideMode, toggleWideMode } = useEditorStore()
+
+  const wordCount =
+    editor?.getText().trim().split(/\s+/).filter(Boolean).length || 0
+
   const [activeTab, setActiveTab] = useState("home")
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [searchText, setSearchText] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
+  const [showSearch, setShowSearch] = useState(false)
+  const [saveStatus, setSaveStatus] = useState("Saved")
+
+
+
   // 2. Create a reference to hold the recognition object
   const recognitionRef = useRef<any>(null);
   useEffect(() => {
@@ -86,6 +96,23 @@ export const Toolbar = () => {
       }
     }
   }, [])
+useEffect(() => {
+  if (!editor) return
+
+  const updateHandler = () => {
+    setSaveStatus("Saving...")
+
+    setTimeout(() => {
+      setSaveStatus("Saved just now")
+    }, 800)
+  }
+
+  editor.on("update", updateHandler)
+
+  return () => {
+    editor.off("update", updateHandler)
+  }
+}, [editor])
 
   const indianFonts = [
     { label: "Hindi (Mangal)", value: "Mangal" },
@@ -225,26 +252,54 @@ const handleVoiceTyping = useCallback(() => {
     URL.revokeObjectURL(url)
   }, [editor])
 
-  const handleSearch = useCallback(() => {
-    if (!searchText || !editor) return
-    const { state } = editor
-    const { doc } = state
-    let found = false
+const currentMatchRef = useRef(0)
 
-    doc.descendants((node, pos) => {
-      if (found) return false
-      if (node.isText && node.text?.toLowerCase().includes(searchText.toLowerCase())) {
-        const index = node.text.toLowerCase().indexOf(searchText.toLowerCase())
-        editor.chain().focus().setTextSelection({ from: pos + index, to: pos + index + searchText.length }).run()
-        found = true
-        return false
-      }
-    })
+const handleSearch = useCallback(() => {
+  if (!searchText || !editor) return
 
-    if (!found) {
-      alert("Text not found / टेक्स्ट नहीं मिला")
+  const matches: { from: number; to: number }[] = []
+
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isText) return
+
+    const text = node.text?.toLowerCase()
+    const searchLower = searchText.toLowerCase()
+const handleZoom = (value: number) => {
+  setZoom(value)
+
+  const editorElement = document.querySelector(".ProseMirror") as HTMLElement
+  if (editorElement) {
+    editorElement.style.transform = `scale(${value / 100})`
+    editorElement.style.transformOrigin = "top center"
+  }
+}
+
+    let index = 0
+    while (text && (index = text.indexOf(searchLower, index)) !== -1) {
+      matches.push({
+        from: pos + index,
+        to: pos + index + searchText.length,
+      })
+      index += searchText.length
     }
-  }, [editor, searchText])
+  })
+
+  if (matches.length === 0) {
+    alert("Text not found / टेक्स्ट नहीं मिला")
+    return
+  }
+
+  const match = matches[currentMatchRef.current % matches.length]
+
+  editor
+    .chain()
+    .focus()
+    .setTextSelection({ from: match.from, to: match.to })
+    .run()
+
+  currentMatchRef.current++
+}, [editor, searchText])
+
 
   const setLink = useCallback(() => {
     if (!linkUrl) {
@@ -277,12 +332,18 @@ const handleVoiceTyping = useCallback(() => {
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className={cn(
-              "p-1.5 rounded transition-colors disabled:opacity-50",
-              active ? "bg-[#1a5276] text-white" : "hover:bg-neutral-200 text-neutral-700"
-            )}
+          className={cn(
+  "p-1.5 rounded transition-colors disabled:opacity-40",
+  active
+    ? "bg-[#1a5276] text-white dark:bg-[#25476a]"
+    : "text-neutral-700 hover:bg-neutral-200 dark:text-gray-200 dark:hover:bg-[#2a3b52]"
+)}
+
+
+
           >
-            <Icon className="size-4" />
+           <Icon className="size-4 stroke-[2.2]" />
+
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs">
@@ -293,18 +354,77 @@ const handleVoiceTyping = useCallback(() => {
   )
 
   return (
-    <div className="flex flex-col bg-[#F1F4F9] border-b border-neutral-300 shadow-sm">
-      {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#1a5276] text-white">
-        <div className="flex items-center gap-3">
-          <FileTextIcon className="size-6" />
-          <span className="font-semibold text-lg">भारतीय वर्ड प्रोसेसर</span>
-        </div>
-        <span className="text-xs opacity-80 tracking-wide">INDIAN WORD PROCESSOR</span>
-      </div>
+<div className="flex flex-col bg-[#F1F4F9] border-b border-neutral-300 shadow-sm">
+ <div className="flex items-center justify-between px-6 py-3 bg-[#1a5276] dark:bg-[#0f172a] text-white transition-colors duration-300">
+
+
+    <div className="flex items-center gap-4">
+      <Image
+        src="/logo.png"
+        alt="BharatDocs Logo"
+        width={64}
+        height={64}
+        className="object-contain"
+      />
+      <span className="font-bold text-2xl tracking-wide">
+        Bharat<span className="text-yellow-300">Docs</span>
+      </span>
+    </div>
+
+    <div className="flex items-center relative">
+      <div className="flex items-center gap-4 mr-3 text-xs">
+
+  <span className="opacity-80">{saveStatus}</span>
+  <span className="opacity-80">{wordCount} words</span>
+
+  <button
+    onClick={() => document.documentElement.classList.toggle("dark")}
+    className="px-2 py-1 border rounded text-xs hover:bg-white hover:text-black transition"
+  >
+    🌙
+  </button>
+
+</div>
+
+
+  {!showSearch && (
+    <SearchIcon
+      className="size-6 cursor-pointer"
+      onClick={() => setShowSearch(true)}
+    />
+  )}
+
+  {showSearch && (
+    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-md shadow-md transition-all duration-200">
+      <Input
+        autoFocus
+        placeholder="Search document..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+        className="h-8 w-64 text-black text-sm border-none focus:ring-0"
+      />
+      <SearchIcon
+        className="size-5 text-gray-600 cursor-pointer"
+        onClick={handleSearch}
+      />
+      <button
+        onClick={() => setShowSearch(false)}
+        className="text-gray-500 text-sm"
+      >
+        ✕
+      </button>
+    </div>
+  )}
+</div>
+
+
+  </div>
+
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-x-1 px-2 pt-1 bg-[#E8ECF1]">
+     <div className="flex items-center gap-x-1 px-2 pt-1 bg-[#E8ECF1] dark:bg-[#1e293b] transition-colors duration-300">
+
         {["file", "home", "insert", "view"].map((tab) => (
           <button
             key={tab}
@@ -314,7 +434,8 @@ const handleVoiceTyping = useCallback(() => {
               "px-4 py-1.5 text-sm rounded-t-md transition capitalize",
               activeTab === tab
                 ? "bg-white font-semibold text-[#1a5276] border-x border-t border-neutral-300"
-                : "hover:bg-neutral-200 text-neutral-600"
+                : "hover:bg-neutral-200 dark:hover:bg-[#334155] text-neutral-600 dark:text-gray-300"
+
             )}
           >
             {tab === "file" ? "File / फ़ाइल" : tab === "home" ? "Home / होम" : tab === "insert" ? "Insert / डालें" : "View / देखें"}
@@ -323,7 +444,9 @@ const handleVoiceTyping = useCallback(() => {
       </div>
 
       {/* Toolbar Content */}
-      <div className="flex items-center gap-x-2 px-3 py-2 min-h-[52px] bg-white border-t border-neutral-200 flex-wrap">
+      <div className="flex items-center gap-x-2 px-3 py-2 min-h-[52px] bg-white border-t border-neutral-200 flex-wrap dark:bg-[#1e293b] dark:border-gray-700">
+
+
         {/* FILE TAB */}
         {activeTab === "file" && (
           <>
@@ -333,36 +456,61 @@ const handleVoiceTyping = useCallback(() => {
                 editor.chain().focus().clearContent().run()
                 editor.chain().focus().setContent("<p></p>").run()
               }}
-              className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
+             className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
             >
               <FilePlusIcon className="size-4" /> New / नया
             </button>
             <button
               type="button"
-              className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
-            >
+            className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
+           >
               <FolderOpenIcon className="size-4" /> Open / खोलें
             </button>
             <button
               type="button"
               onClick={handleDownload}
-              className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
-            >
+              className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
+           >
               <SaveIcon className="size-4" /> Save / सहेजें
             </button>
             <Separator orientation="vertical" className="h-6 mx-1" />
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
+             className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
             >
               <PrinterIcon className="size-4" /> Print / प्रिंट
             </button>
             <button
               type="button"
               onClick={handleDownload}
-              className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
-            >
+             className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
+           >
               <DownloadIcon className="size-4" /> Download / डाउनलोड
             </button>
           </>
@@ -383,85 +531,153 @@ const handleVoiceTyping = useCallback(() => {
             <Separator orientation="vertical" className="h-6 mx-1" />
 
             {/* Font Selection */}
-            <select
-              onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
-              className="bg-neutral-50 border text-xs p-1.5 rounded min-w-[150px] font-medium focus:border-[#1a5276] focus:outline-none"
-              value={editor.getAttributes("textStyle").fontFamily || "Mangal"}
-            >
-              {indianFonts.map((font) => (
-                <option key={font.value} value={font.value}>
-                  {font.label}
-                </option>
-              ))}
-            </select>
+          <select
+  onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
+  className="bg-neutral-50 text-black border text-xs p-1.5 rounded min-w-[150px] font-medium 
+  focus:border-[#1a5276] focus:outline-none
+  dark:bg-[#1f2a3a] dark:text-white dark:border-[#2e3f55]"
+  value={editor.getAttributes("textStyle").fontFamily || "Mangal"}
+>
+  {indianFonts.map((font) => (
+    <option key={font.value} value={font.value}>
+      {font.label}
+    </option>
+  ))}
+</select>
 
-            {/* Font Size */}
-            <select
-              onChange={(e) => {
-                const size = e.target.value
-                editor.chain().focus().setMark("textStyle", { fontSize: `${size}px` }).run()
-              }}
-              className="bg-neutral-50 border text-xs p-1.5 rounded w-[65px] font-medium focus:border-[#1a5276] focus:outline-none"
-              defaultValue="14"
-            >
-              {FONT_SIZES.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <Separator orientation="vertical" className="h-6 mx-1" />
 
-            {/* Text Color */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" className="p-1.5 rounded hover:bg-neutral-200 relative">
-                  <TypeIcon className="size-4" />
-                  <div
-                    className="absolute bottom-0.5 left-1 right-1 h-1 rounded-full"
-                    style={{ backgroundColor: editor.getAttributes("textStyle").color || "#000" }}
-                  />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-2">
-                <p className="text-xs font-medium mb-2">Text Color / टेक्स्ट रंग</p>
-                <div className="grid grid-cols-6 gap-1">
-                  {TEXT_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className="w-6 h-6 rounded border hover:scale-110 transition"
-                      style={{ backgroundColor: color }}
-                      onClick={() => editor.chain().focus().setColor(color).run()}
-                    />
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+           {/* Font Size */}
+<Popover>
+  <PopoverTrigger asChild>
+    <Button
+      variant="outline"
+      className="w-[65px] text-xs justify-center
+      bg-neutral-50 text-black
+      dark:bg-[#1f2a3a] dark:text-white dark:border-[#2e3f55]"
+    >
+      {editor.getAttributes("textStyle").fontSize?.replace("px", "") || "14"}
+    </Button>
+  </PopoverTrigger>
 
-            {/* Highlight Color */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" className="p-1.5 rounded hover:bg-neutral-200">
-                  <HighlighterIcon className="size-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-2">
-                <p className="text-xs font-medium mb-2">Highlight / हाइलाइट</p>
-                <div className="grid grid-cols-6 gap-1">
-                  {HIGHLIGHT_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      className="w-6 h-6 rounded border hover:scale-110 transition"
-                      style={{ backgroundColor: color }}
-                      onClick={() => editor.chain().focus().toggleHighlight({ color }).run()}
-                    />
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Separator orientation="vertical" className="h-6 mx-1" />
+  <PopoverContent className="w-20 p-1 dark:bg-[#1f2a3a] dark:border-[#2e3f55]">
+    {FONT_SIZES.map((size) => (
+      <button
+        key={size}
+        onClick={() =>
+          editor
+            .chain()
+            .focus()
+            .setMark("textStyle", { fontSize: `${size}px` })
+            .run()
+        }
+        className="w-full text-center px-2 py-1 text-xs rounded 
+        hover:bg-neutral-200 
+        dark:hover:bg-[#2a3b52] dark:text-white"
+      >
+        {size}
+      </button>
+    ))}
+  </PopoverContent>
+</Popover>
+{/* Text Color */}
+<Popover>
+  <PopoverTrigger asChild>
+    <button
+      type="button"
+      className="p-1.5 rounded hover:bg-neutral-200 dark:hover:bg-[#2a3b52] transition"
+    >
+      <TypeIcon className="size-4" />
+    </button>
+  </PopoverTrigger>
+
+  <PopoverContent className="w-48 p-2 bg-white dark:bg-[#1e293b] border dark:border-gray-700">
+    <p className="text-xs font-medium mb-2 text-black dark:text-white">
+      Text Color
+    </p>
+
+    <div className="grid grid-cols-6 gap-1">
+      {TEXT_COLORS.map((color) => (
+        <button
+          key={color}
+          type="button"
+          className="w-6 h-6 rounded border"
+          style={{ backgroundColor: color }}
+          onClick={() =>
+            editor.chain().focus().setColor(color).run()
+          }
+        />
+      ))}
+
+      {/* Remove color */}
+      <button
+        type="button"
+        className="col-span-6 text-xs mt-2 text-red-500"
+        onClick={() =>
+          editor.chain().focus().unsetColor().run()
+        }
+      >
+        Remove Color
+      </button>
+    </div>
+  </PopoverContent>
+</Popover>
+
+
+           {/* Highlight Color */}
+<Popover>
+  <PopoverTrigger asChild>
+    <button
+      type="button"
+      className="p-1.5 rounded transition 
+                 hover:bg-neutral-200 
+                 dark:text-gray-200 
+                 dark:hover:bg-[#2a3b52]"
+    >
+      <HighlighterIcon className="size-4" />
+    </button>
+  </PopoverTrigger>
+
+  <PopoverContent className="w-48 p-3 
+                             bg-white dark:bg-[#1e293b] 
+                             border dark:border-gray-700">
+
+    <p className="text-xs font-medium mb-2 
+                  text-black dark:text-white">
+      Highlight / हाइलाइट
+    </p>
+
+    <div className="grid grid-cols-6 gap-2">
+      {HIGHLIGHT_COLORS.map((color) => (
+        <button
+          key={color}
+          type="button"
+          className="w-6 h-6 rounded border 
+                     hover:scale-110 transition"
+          style={{ backgroundColor: color }}
+          onClick={() =>
+            editor.chain().focus().toggleHighlight({ color }).run()
+          }
+        />
+      ))}
+    </div>
+
+    {/* Remove Highlight */}
+    <button
+      type="button"
+      className="w-full mt-3 text-xs 
+                 text-red-500 hover:underline"
+      onClick={() =>
+        editor.chain().focus().unsetHighlight().run()
+      }
+    >
+      Remove Highlight
+    </button>
+
+  </PopoverContent>
+</Popover>
+
+<Separator orientation="vertical" className="h-6 mx-1" />
+
 
             {/* Text Formatting */}
             <ToolbarButton icon={BoldIcon} onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} tooltip="Bold / बोल्ड (Ctrl+B)" />
@@ -481,12 +697,67 @@ const handleVoiceTyping = useCallback(() => {
             <Separator orientation="vertical" className="h-6 mx-1" />
 
             {/* Lists */}
-            <ToolbarButton icon={ListIcon} onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} tooltip="Bullet List / बुलेट लिस्ट" />
-            <ToolbarButton icon={ListOrderedIcon} onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} tooltip="Numbered List / क्रमांकित सूची" />
-            <ToolbarButton icon={CheckSquareIcon} onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive("taskList")} tooltip="Task List / कार्य सूची" />
-            <ToolbarButton icon={OutdentIcon} onClick={() => editor.chain().focus().liftListItem("listItem").run()} tooltip="Decrease Indent / इंडेंट घटाएं" />
-            <ToolbarButton icon={IndentIcon} onClick={() => editor.chain().focus().sinkListItem("listItem").run()} tooltip="Increase Indent / इंडेंट बढ़ाएं" />
-            <Separator orientation="vertical" className="h-6 mx-1" />
+           <Popover>
+  <PopoverTrigger asChild>
+    <button
+      type="button"
+      className="p-1.5 rounded transition hover:bg-neutral-200 dark:hover:bg-[#2a3b52]"
+    >
+      <ListIcon className="size-4" />
+    </button>
+  </PopoverTrigger>
+
+  <PopoverContent className="w-48 p-2 dark:bg-[#1e293b] dark:text-white">
+    <div className="flex flex-col gap-1 text-xs">
+
+      <button
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className="flex items-center gap-2 p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-[#2a3b52]"
+      >
+        <ListIcon className="size-4" />
+        Bullet List
+      </button>
+
+      <button
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        className="flex items-center gap-2 p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-[#2a3b52]"
+      >
+        <ListOrderedIcon className="size-4" />
+        Numbered List
+      </button>
+
+      <button
+        onClick={() => editor.chain().focus().toggleTaskList().run()}
+        className="flex items-center gap-2 p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-[#2a3b52]"
+      >
+        <CheckSquareIcon className="size-4" />
+        Task List
+      </button>
+
+      <Separator className="my-1" />
+
+      <button
+        onClick={() => editor.chain().focus().sinkListItem("listItem").run()}
+        className="flex items-center gap-2 p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-[#2a3b52]"
+      >
+        <IndentIcon className="size-4" />
+        Increase Indent
+      </button>
+
+      <button
+        onClick={() => editor.chain().focus().liftListItem("listItem").run()}
+        className="flex items-center gap-2 p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-[#2a3b52]"
+      >
+        <OutdentIcon className="size-4" />
+        Decrease Indent
+      </button>
+
+    </div>
+  </PopoverContent>
+</Popover>
+
+<Separator orientation="vertical" className="h-6 mx-1" />
+
 
             {/* Voice Features */}
             <ToolbarButton
@@ -507,11 +778,17 @@ const handleVoiceTyping = useCallback(() => {
 
         {/* INSERT TAB */}
         {activeTab === "insert" && (
-          <>
+          <div className="flex items-center gap-3 whitespace-nowrap">
+
             <button
               type="button"
               onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-              className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
+              className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
             >
               <TableIcon className="size-4" /> Table / तालिका
             </button>
@@ -521,7 +798,12 @@ const handleVoiceTyping = useCallback(() => {
                 const url = window.prompt("Enter Image URL / छवि URL दर्ज करें:")
                 if (url) editor.chain().focus().setImage({ src: url }).run()
               }}
-              className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
+              className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
             >
               <ImageIcon className="size-4" /> Picture / चित्र
             </button>
@@ -530,8 +812,13 @@ const handleVoiceTyping = useCallback(() => {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
-                >
+                  className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
+            >
                   <Link2Icon className="size-4" /> Link / लिंक
                 </button>
               </PopoverTrigger>
@@ -554,30 +841,70 @@ const handleVoiceTyping = useCallback(() => {
             <button
               type="button"
               onClick={() => editor.chain().focus().setHorizontalRule().run()}
-              className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded bg-neutral-50 hover:bg-white hover:border-[#1a5276] transition"
+              className="flex items-center gap-1.5 text-xs border 
+           px-3 py-1.5 rounded transition
+           bg-neutral-50 text-black border-neutral-300
+           hover:bg-white hover:border-[#1a5276]
+           dark:bg-[#1e293b] dark:text-gray-200 dark:border-gray-700
+           dark:hover:bg-[#2a3b52] dark:hover:border-[#3b82f6]"
             >
               <MinusIcon className="size-4" /> Divider / विभाजक
             </button>
-          </>
-        )}
+           </div>
+)}
 
-        {/* VIEW TAB */}
-        {activeTab === "view" && (
-          <>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Search text... / टेक्स्ट खोजें..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="text-xs w-48 h-8"
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              />
-              <Button size="sm" variant="outline" onClick={handleSearch} className="h-8 bg-transparent">
-                <SearchIcon className="size-4 mr-1" /> Find / खोजें
-              </Button>
-            </div>
-          </>
-        )}
+
+      {/* VIEW TAB */}
+{activeTab === "view" && (
+  <div className="flex items-center gap-4 flex-wrap">
+
+    {/* Search */}
+    <div className="flex items-center gap-2">
+      <Input
+        placeholder="Search text... / टेक्स्ट खोजें..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        className="text-xs w-48 h-8"
+        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleSearch}
+        className="h-8"
+      >
+        <SearchIcon className="size-4 mr-1" /> Find
+      </Button>
+    </div>
+
+    {/* Zoom */}
+    <select
+      value={zoom}
+      onChange={(e) => handleZoom(Number(e.target.value))}
+      className="bg-neutral-50 border text-xs p-1.5 rounded h-8
+                 dark:bg-[#1e293b] dark:text-white dark:border-gray-700"
+    >
+      {[50, 75, 100, 125, 150, 200].map((z) => (
+        <option key={z} value={z}>
+          {z}%
+        </option>
+      ))}
+    </select>
+
+    {/* Wide Mode */}
+    <button
+      onClick={() => setWideMode(!wideMode)}
+      className="text-xs border px-3 py-1.5 rounded h-8
+                 bg-neutral-50 hover:bg-white
+                 dark:bg-[#1e293b] dark:text-white dark:border-gray-700
+                 dark:hover:bg-[#2a3b52]"
+    >
+      {wideMode ? "Normal Width" : "Wide Mode"}
+    </button>
+
+  </div>
+)}
+
       </div>
     </div>
   )
