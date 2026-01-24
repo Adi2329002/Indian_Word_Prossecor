@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef,useEffect } from "react"
 import { useEditorStore } from "@/store/use-editor-store"
+import { useLanguageStore } from "@/store/use-language-store"
 import {
   Undo2Icon,
   Redo2Icon,
@@ -55,6 +56,7 @@ import {
 } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { translations } from "@/lib/translations"
 
 const FONT_SIZES = ["10", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "72"]
 
@@ -71,6 +73,7 @@ const HIGHLIGHT_COLORS = [
 
 export const Toolbar = () => {
   const { editor } = useEditorStore()
+  const { language, supportedLanguages, setLanguage } = useLanguageStore()
   const [activeTab, setActiveTab] = useState("home")
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -121,7 +124,7 @@ const handleVoiceTyping = useCallback(() => {
     const recognition = new SpeechRecognition()
     recognitionRef.current = recognition; // Save it here!
 
-    recognition.lang = "hi-IN"
+    recognition.lang = language.code
     recognition.continuous = true; 
     recognition.interimResults = true;
 
@@ -151,7 +154,7 @@ const handleVoiceTyping = useCallback(() => {
     }
 
     recognition.start()
-  }, [editor, isListening])
+  }, [editor, isListening, language])
 
   const handleReadAloud = useCallback(() => {
     if (!("speechSynthesis" in window)) {
@@ -168,12 +171,12 @@ const handleVoiceTyping = useCallback(() => {
     const text = editor?.getText() || ""
     if (text) {
       const ut = new SpeechSynthesisUtterance(text)
-      ut.lang = "hi-IN"
+      ut.lang = language.code
       ut.onend = () => setIsSpeaking(false)
       setIsSpeaking(true)
       window.speechSynthesis.speak(ut)
     }
-  }, [editor, isSpeaking])
+  }, [editor, isSpeaking, language])
 
   const handlePrint = useCallback(() => {
     const content = editor?.getHTML()
@@ -317,7 +320,7 @@ const handleVoiceTyping = useCallback(() => {
                 : "hover:bg-neutral-200 text-neutral-600"
             )}
           >
-            {tab === "file" ? "File / फ़ाइल" : tab === "home" ? "Home / होम" : tab === "insert" ? "Insert / डालें" : "View / देखें"}
+            {`${translations[tab]['en']} / ${translations[tab][language.code]}`}
           </button>
         ))}
       </div>
@@ -391,6 +394,24 @@ const handleVoiceTyping = useCallback(() => {
               {indianFonts.map((font) => (
                 <option key={font.value} value={font.value}>
                   {font.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Language Selection for Transliteration */}
+            <select
+              onChange={(e) => {
+                const selectedLang = supportedLanguages.find(lang => lang.code === e.target.value);
+                if (selectedLang) {
+                  setLanguage(selectedLang);
+                }
+              }}
+              className="bg-neutral-50 border text-xs p-1.5 rounded min-w-[150px] font-medium focus:border-[#1a5276] focus:outline-none"
+              value={language.code}
+            >
+              {supportedLanguages.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
                 </option>
               ))}
             </select>

@@ -1,7 +1,8 @@
+import "regenerator-runtime/runtime"; // 👈 THIS FIXES SPEECH-TO-TEXT
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ConvexClientProvider } from "./ConvexClientProvider"; // <--- IMPORT THIS
+import { ConvexClientProvider } from "./ConvexClientProvider"; 
 
 const inter = Inter({ subsets: ["latin"] });
 
