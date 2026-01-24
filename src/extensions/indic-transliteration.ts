@@ -21,7 +21,7 @@ export const IndicTransliteration = Extension.create({
 
         // Get the current language from the Zustand store
         const { language } = useLanguageStore.getState()
-        const itc = `${language}-t-i0-und`
+        const itc = `${language.code}-t-i0-und`
 
         // 2. Send it to Google
         fetch(`https://inputtools.google.com/request?text=${lastWord}&itc=${itc}&num=1`)
