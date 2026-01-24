@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery , useMutation } from "convex/react";
 import { use } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -18,6 +18,7 @@ export default function DocumentIdPage({ params }: DocumentIdPageProps) {
   const document = useQuery(api.documents.getById, {
     documentId: unwrappedParams.documentId as Id<"documents">,
   });
+  
 
   if (document === undefined) {
     return (
@@ -35,9 +36,10 @@ export default function DocumentIdPage({ params }: DocumentIdPageProps) {
     // Pass the resolved documentId to the Room
     <Room roomId={unwrappedParams.documentId}>
       <div className="min-h-screen bg-[#F9FBFD]">
-        <div className="flex flex-col px-4 pt-2 gap-y-2 fixed top-0 left-0 right-0 z-10 bg-[#fafbfd] print:hidden">
-           <Toolbar />
-        </div>
+       <div className="fixed top-0 left-0 right-0 z-10 print:hidden">
+  <Toolbar document={document} />
+</div>
+
         
         <div className="pt-[114px] print:pt-0">
           <Editor /> 

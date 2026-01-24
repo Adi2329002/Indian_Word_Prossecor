@@ -44,7 +44,7 @@ export const Editor = () => {
       attributes: {
         style: "padding-left: 56px; padding-right: 56px;",
       class:
-  "focus:outline-none bg-white dark:bg-[#1e293b] border border-[#C7C7C7] dark:border-[#334155] flex flex-col min-h-[1054px] w-[816px] pt-10 pr-14 pb-10 cursor-text shadow-sm dark:shadow-2xl mx-auto prose prose-sm max-w-none transition-colors duration-300",
+  "focus:outline-none bg-white dark:bg-[#1e293b] border border-[#C7C7C7] dark:border-[#334155] flex flex-col min-h-[1054px]  pt-10 pr-14 pb-10 cursor-text shadow-sm dark:shadow-2xl mx-auto prose prose-sm max-w-none transition-colors duration-300",
 
 
       },

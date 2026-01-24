@@ -1,5 +1,7 @@
 "use client"
 import Image from "next/image"
+import { useMutation } from "convex/react"
+import { api } from "../../../../convex/_generated/api"
 
 import { useState, useCallback, useRef,useEffect } from "react"
 import { useEditorStore } from "@/store/use-editor-store"
@@ -70,7 +72,13 @@ const HIGHLIGHT_COLORS = [
   "#ffa500", "#800080", "#ffc0cb", "#90ee90", "#add8e6", "#ffb6c1",
 ]
 
-export const Toolbar = () => {
+interface ToolbarProps {
+  document: any
+}
+
+export const Toolbar = ({ document }: ToolbarProps) => {
+const updateDocument = useMutation(api.documents.update)
+
   const { editor, zoom, setZoom, wideMode, toggleWideMode } = useEditorStore()
 
   const wordCount =
@@ -83,6 +91,15 @@ export const Toolbar = () => {
   const [linkUrl, setLinkUrl] = useState("")
   const [showSearch, setShowSearch] = useState(false)
   const [saveStatus, setSaveStatus] = useState("Saved")
+  // ✅ Title state (local for smooth typing)
+const [title, setTitle] = useState(document?.title || "")
+const [isSaving, setIsSaving] = useState(false)
+useEffect(() => {
+  if (document?.title) {
+    setTitle(document.title)
+  }
+}, [document])
+
 
 
 
@@ -252,6 +269,11 @@ const handleVoiceTyping = useCallback(() => {
     URL.revokeObjectURL(url)
   }, [editor])
 
+
+
+const handleZoom = (value: number) => {
+  setZoom(value)
+}
 const currentMatchRef = useRef(0)
 
 const handleSearch = useCallback(() => {
@@ -264,15 +286,6 @@ const handleSearch = useCallback(() => {
 
     const text = node.text?.toLowerCase()
     const searchLower = searchText.toLowerCase()
-const handleZoom = (value: number) => {
-  setZoom(value)
-
-  const editorElement = document.querySelector(".ProseMirror") as HTMLElement
-  if (editorElement) {
-    editorElement.style.transform = `scale(${value / 100})`
-    editorElement.style.transformOrigin = "top center"
-  }
-}
 
     let index = 0
     while (text && (index = text.indexOf(searchLower, index)) !== -1) {
@@ -299,7 +312,6 @@ const handleZoom = (value: number) => {
 
   currentMatchRef.current++
 }, [editor, searchText])
-
 
   const setLink = useCallback(() => {
     if (!linkUrl) {
@@ -358,18 +370,33 @@ const handleZoom = (value: number) => {
  <div className="flex items-center justify-between px-6 py-3 bg-[#1a5276] dark:bg-[#0f172a] text-white transition-colors duration-300">
 
 
-    <div className="flex items-center gap-4">
-      <Image
-        src="/logo.png"
-        alt="BharatDocs Logo"
-        width={64}
-        height={64}
-        className="object-contain"
-      />
-      <span className="font-bold text-2xl tracking-wide">
-        Bharat<span className="text-yellow-300">Docs</span>
-      </span>
-    </div>
+   <div className="flex items-center gap-4">
+  <Image
+    src="/logo.png"
+    alt="BharatDocs Logo"
+    width={48}
+    height={48}
+    className="object-contain"
+  />
+
+  <div className="flex flex-col">
+    <span className="text-lg font-bold tracking-wide">
+      Bharat<span className="text-yellow-300">Docs</span>
+    </span>
+
+    <input
+      value={document?.title || ""}
+      onChange={(e) =>
+        updateDocument({
+          id: document._id,
+          title: e.target.value,
+        })
+      }
+      className="text-sm bg-transparent outline-none border-none text-white placeholder-white/60 focus:ring-0"
+      placeholder="Untitled Document"
+    />
+  </div>
+</div>
 
     <div className="flex items-center relative">
       <div className="flex items-center gap-4 mr-3 text-xs">
@@ -378,7 +405,12 @@ const handleZoom = (value: number) => {
   <span className="opacity-80">{wordCount} words</span>
 
   <button
-    onClick={() => document.documentElement.classList.toggle("dark")}
+   onClick={() => {
+  if (typeof window !== "undefined") {
+    window.document.documentElement.classList.toggle("dark")
+  }
+}}
+
     className="px-2 py-1 border rounded text-xs hover:bg-white hover:text-black transition"
   >
     🌙
@@ -893,7 +925,7 @@ const handleZoom = (value: number) => {
 
     {/* Wide Mode */}
     <button
-      onClick={() => setWideMode(!wideMode)}
+      onClick={toggleWideMode}
       className="text-xs border px-3 py-1.5 rounded h-8
                  bg-neutral-50 hover:bg-white
                  dark:bg-[#1e293b] dark:text-white dark:border-gray-700

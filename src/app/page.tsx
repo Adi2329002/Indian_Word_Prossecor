@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 // This imports the backend API we defined in convex/documents.ts
 import { api } from "../../convex/_generated/api"; 
 import { SignInButton, UserButton, SignedIn, SignedOut } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   // 1. Hook to fetch your existing documents
@@ -11,21 +12,21 @@ export default function Home() {
   
   // 2. Hook to CREATE a new document
   const createDocument = useMutation(api.documents.create);
-
+  
   // 3. The function that runs when you click the button
-  const onCreate = () => {
-    console.log("Button clicked!"); // Debugging log
-
-    createDocument({ title: "Untitled Document" })
-      .then((documentId) => {
-        console.log("Created document:", documentId);
-        // Redirect to the new dynamic ID
-        window.location.href = `/documents/${documentId}`;
-      })
-      .catch((error) => {
-        console.error("Error creating document:", error);
-        alert("Failed to create: " + error);
+  const router = useRouter();
+ const onCreate = async () => {
+    try {
+      const documentId = await createDocument({
+        title: "Untitled Document",
+        content: "<p></p>",
       });
+
+      router.push(`/documents/${documentId}`);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to create document");
+    }
   };
 
   return (
@@ -55,6 +56,12 @@ export default function Home() {
           >
             + Create New Document
           </button>
+<button
+  onClick={() => router.push("/templates")}
+  className="px-6 py-3 bg-[#1a5276] text-white font-semibold rounded hover:opacity-90 transition shadow-md"
+>
+  📚 Open Template Gallery
+</button>
 
           {/* THE DOCUMENT LIST */}
           <div className="mt-10 w-full max-w-2xl">

@@ -1,9 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-// 1. Function to CREATE a new blank document
+// 1️⃣ CREATE DOCUMENT
 export const create = mutation({
-  args: { title: v.string() }, 
+  args: {
+    title: v.string(),
+    content: v.string(),   // ✅ MUST EXIST
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -12,15 +15,19 @@ export const create = mutation({
 
     const documentId = await ctx.db.insert("documents", {
       title: args.title,
+      content: args.content,   // ✅ STORE IT
       ownerId: identity.subject,
-      initialContent: "",
+      coverImage: undefined,
+      icon: undefined,
+      isPublished: false,
     });
 
     return documentId;
   },
 });
 
-// 2. Function to GET all documents (Using Filter Fix)
+
+// 2️⃣ GET ALL DOCUMENTS
 export const get = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -35,10 +42,7 @@ export const get = query({
   },
 });
 
-// ... keep imports and existing create/get functions ...
-
-// 3. Function to GET a single document by its ID
-// 3. Function to GET a single document by its ID
+// 3️⃣ GET DOCUMENT BY ID
 export const getById = query({
   args: { documentId: v.id("documents") },
   handler: async (ctx, args) => {
@@ -47,34 +51,26 @@ export const getById = query({
     const document = await ctx.db.get(args.documentId);
 
     if (!document) {
-      throw new Error("Not found");
-    }
-    if (!identity) {
-      throw new Error("Unauthorized: You must be logged in to view this document");
-    }
-    // --- 👇 ADD THESE LOGS TO DEBUG 👇 ---
-    console.log("WHO AM I?", identity?.subject);
-    console.log("WHO OWNS THIS DOC?", document.ownerId);
-    // -------------------------------------
+  return null;
+}
 
-    // Security: Only allow the owner (or public) to see it
-    // if (document.ownerId !== identity?.subject) {
-    //   throw new Error("Unauthorized");
-    // }
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
 
     return document;
   },
 });
 
-// 4. Function to UPDATE a document (Title or Content)
+// 4️⃣ UPDATE DOCUMENT (INCLUDING TITLE)
 export const update = mutation({
   args: {
     id: v.id("documents"),
-    title: v.optional(v.string()),
+    title: v.optional(v.string()),  // 👈 Title support added
     content: v.optional(v.string()),
-    coverImage: v.optional(v.string()), // Useful later
-    icon: v.optional(v.string()),       // Useful later
-    isPublished: v.optional(v.boolean())
+    coverImage: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    isPublished: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -84,31 +80,18 @@ export const update = mutation({
 
     const { id, ...rest } = args;
 
-    // Security: Check if document exists and belongs to user
-    const existingDocument = await ctx.db.get(args.id);
+    const existingDocument = await ctx.db.get(id);
     if (!existingDocument) {
       throw new Error("Not found");
     }
+
+    // Ownership check (keep commented if testing collaboration)
     // if (existingDocument.ownerId !== identity.subject) {
     //   throw new Error("Unauthorized");
     // }
 
-    // Update the document with whatever new data was sent
-    // const document = await ctx.db.patch(args.id, {
-    //   ...rest,
-    // });
-    // NEW LOGIC: Allow update if user is the owner. 
-    // If you want guest editors, relax this check like we did in getById.
-    const isOwner = existingDocument.ownerId === identity.subject;
-    
-    if (!isOwner) {
-       // Optional: For now, we might allow other logged in users to edit 
-       // to test the live collaboration system.
-       // throw new Error("Unauthorized"); 
-    }
-
-    const document = await ctx.db.patch(args.id, {
-      ...rest,
+    const document = await ctx.db.patch(id, {
+      ...rest,   // 👈 This will now update title when passed
     });
 
     return document;
