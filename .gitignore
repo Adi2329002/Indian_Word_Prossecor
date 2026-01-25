@@ -36,3 +36,8 @@ next-env.d.ts
 # clerk configuration (can include secrets)
 /.clerk/
 .env
+
+GEMINI.md
+.env
+.env.local
+./convex/auth.config.ts

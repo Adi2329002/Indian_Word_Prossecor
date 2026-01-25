@@ -2,6 +2,22 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'microphone=(self)',
+          },
+        ],
+      },
+    ];
+  },
+
+  
   
   // 👇 ADD THESE LINES TO IGNORE ERRORS
   eslint: {

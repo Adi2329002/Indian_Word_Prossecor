@@ -1,5 +1,5 @@
-// src/extensions/indic-transliteration.ts
 import { Extension } from '@tiptap/core'
+import { useLanguageStore } from '@/store/use-language-store'
 
 export const IndicTransliteration = Extension.create({
   name: 'indicTransliteration',
@@ -18,28 +18,40 @@ export const IndicTransliteration = Extension.create({
         // If no word found, just let the space happen normally
         if (!lastWord || lastWord.trim().length === 0) return false 
 
-        // 2. Send it to Google (Hinglish -> Hindi)
-        // You can change 'hi-t-i0-und' to 'bn-t-i0-und' (Bengali), 'ta-t-i0-und' (Tamil), etc.
-        fetch(`https://inputtools.google.com/request?text=${lastWord}&itc=hi-t-i0-und&num=1`)
+        const { language } = useLanguageStore.getState()
+        
+        // Safety: If language is English, don't try to transliterate
+        if (language.code === 'en') return false;
+
+        const itc = `${language.code}-t-i0-und`
+
+        // 2. Send it to Google
+        fetch(`https://inputtools.google.com/request?text=${encodeURIComponent(lastWord)}&itc=${itc}&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8`)
           .then(res => res.json())
           .then(data => {
-            // Google returns a list of suggestions. We take the first one.
-            const hindiWord = data[1][0][1][0] 
+            // 👇 THE FIX: Check if data exists before grabbing it
+            if (
+              data && 
+              data[0] === 'SUCCESS' && 
+              data[1] && 
+              data[1][0] && 
+              data[1][0][1] && 
+              data[1][0][1].length > 0
+            ) {
+              const transliteratedWord = data[1][0][1][0]
 
-            if (hindiWord) {
               editor.commands.command(({ tr, dispatch }) => {
                 if (dispatch) {
-                  // 3. Delete English word -> Insert Hindi word + Space
+                  // 3. Delete English word -> Insert transliterated word + Space
                   const start = from - lastWord.length
-                  tr.insertText(hindiWord + ' ', start, from) 
+                  tr.insertText(transliteratedWord + ' ', start, from) 
                 }
                 return true
               })
             }
           })
           .catch(err => {
-             // If internet fails, just do nothing (let the space act normal)
-             console.error(err)
+             console.error("Transliteration skipped:", err)
           })
 
         // Return false to let the space key act normally while waiting for the API
