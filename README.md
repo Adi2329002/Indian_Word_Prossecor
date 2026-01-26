@@ -1,4 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+![alt text](image.png)
+
+## Project Overview
+Ms Doc but for India is a web-based word processing platform designed specifically for Indian users — students, faculty, and organizations. Unlike traditional word processors that are optimized mainly for Western language and usage patterns, this project focuses on Indian languages, accents, writing styles, and real academic needs.
+
+The goal is to Indianise the document creation experience by integrating:
+
+- Multi-lingual Indian language support
+
+- Voice typing for Indian accents
+
+- Low-data and low-resource performance
+
+- AI-assisted academic and research tools
+
+This platform aims to bridge the gap between modern document processing tools and the practical challenges faced by Indian users, especially in education and administration.
+
+🚀 Key Objectives
+
+- Provide a word processor tailored to Indian linguistic diversity
+
+- Support real-time translation and multilingual writing
+
+- Enable efficient document creation even in low-bandwidth environments
+
+- Assist students and faculty with smart academic tools
+
+- Offer a cloud-synced, accessible web solution
+
+## Features
+🗣️ Indian Language & Accent Support
+
+- Supports multiple Indian languages (Hindi, Marathi, Tamil, Telugu, Bengali, etc.)
+
+- Voice typing optimized for Indian accents
+
+- Script handling for Indic languages using NLP libraries
+
+🌐 Live Translation
+
+- Real-time translation between Indian languages and English
+
+- Useful for multilingual documents and regional content creation
+
+- Helps students understand and convert content easily
+
+✍️ Smart Writing Assistance
+
+- Grammar and spelling suggestions adapted for Indian usage
+
+- AI-based sentence improvement and paraphrasing
+
+- Style correction for academic and formal writing
+
+🧠 AI Summary & Key Point Extractor
+
+- Automatically summarizes long documents
+
+- Extracts important bullet points
+
+- Helps in quick revision and note-making
+
+☁️ Cloud-Based & Web Accessible
+
+- Web-based platform accessible from any device
+
+- Automatic cloud synchronization
+
+- No installation required
 
 ## Getting Started
 First Download Docker and Docker Cli
@@ -215,13 +283,6 @@ sudo docker run hello-world
 ---
 
 ## Conclusion
-
-Docker and Docker CLI are successfully installed and ready to use.
-
-```
-```
-
-
 Then build and run the project in docker:
 
 To build the app:
@@ -239,6 +300,132 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Project Structure
+```bash
+Indian_Word_Processor/
+├─ convex/
+│  ├─ _generated/
+│  │  ├─ api.d.ts
+│  │  ├─ api.js
+│  │  ├─ dataModel.d.ts
+│  │  ├─ server.d.ts
+│  │  └─ server.js
+│  ├─ auth.config.ts
+│  ├─ documents.ts
+│  ├─ liveblocks.ts
+│  ├─ README.md
+│  ├─ schema.ts
+│  └─ tsconfig.json
+├─ src/
+│  ├─ app/
+│  │  ├─ (auth)/
+│  │  │  ├─ signin/
+│  │  │  │  └─ signin.tsx
+│  │  │  ├─ signup/
+│  │  │  │  └─ signup.tsx
+│  │  │  └─ layout.tsx
+│  │  ├─ documents/
+│  │  │  ├─ [documentId]/
+│  │  │  │  ├─ editor.tsx
+│  │  │  │  ├─ page.tsx
+│  │  │  │  ├─ room.tsx
+│  │  │  │  └─ toolbar.tsx
+│  │  │  └─ page.tsx
+│  │  ├─ fonts/
+│  │  │  ├─ GeistMonoVF.woff
+│  │  │  └─ GeistVF.woff
+│  │  ├─ ConvexClientProvider.tsx
+│  │  ├─ globals.css
+│  │  ├─ layout.tsx
+│  │  └─ page.tsx
+│  ├─ components/
+│  │  └─ ui/
+│  │     ├─ accordion.tsx
+│  │     ├─ alert-dialog.tsx
+│  │     ├─ alert.tsx
+│  │     ├─ aspect-ratio.tsx
+│  │     ├─ avatar.tsx
+│  │     ├─ badge.tsx
+│  │     ├─ breadcrumb.tsx
+│  │     ├─ button-group.tsx
+│  │     ├─ button.tsx
+│  │     ├─ calendar.tsx
+│  │     ├─ card.tsx
+│  │     ├─ carousel.tsx
+│  │     ├─ chart.tsx
+│  │     ├─ checkbox.tsx
+│  │     ├─ collapsible.tsx
+│  │     ├─ command.tsx
+│  │     ├─ context-menu.tsx
+│  │     ├─ convex-client-provider.tsx
+│  │     ├─ dialog.tsx
+│  │     ├─ drawer.tsx
+│  │     ├─ dropdown-menu.tsx
+│  │     ├─ empty.tsx
+│  │     ├─ field.tsx
+│  │     ├─ form.tsx
+│  │     ├─ hover-card.tsx
+│  │     ├─ input-group.tsx
+│  │     ├─ input-otp.tsx
+│  │     ├─ input.tsx
+│  │     ├─ item.tsx
+│  │     ├─ kbd.tsx
+│  │     ├─ label.tsx
+│  │     ├─ menubar.tsx
+│  │     ├─ navigation-menu.tsx
+│  │     ├─ pagination.tsx
+│  │     ├─ popover.tsx
+│  │     ├─ progress.tsx
+│  │     ├─ radio-group.tsx
+│  │     ├─ resizable.tsx
+│  │     ├─ scroll-area.tsx
+│  │     ├─ select.tsx
+│  │     ├─ separator.tsx
+│  │     ├─ sheet.tsx
+│  │     ├─ sidebar.tsx
+│  │     ├─ skeleton.tsx
+│  │     ├─ slider.tsx
+│  │     ├─ sonner.tsx
+│  │     ├─ spinner.tsx
+│  │     ├─ switch.tsx
+│  │     ├─ table.tsx
+│  │     ├─ tabs.tsx
+│  │     ├─ textarea.tsx
+│  │     ├─ toast.tsx
+│  │     ├─ toaster.tsx
+│  │     ├─ toggle-group.tsx
+│  │     ├─ toggle.tsx
+│  │     └─ tooltip.tsx
+│  ├─ extensions/
+│  │  └─ indic-transliteration.ts
+│  ├─ hooks/
+│  │  ├─ use-mobile.tsx
+│  │  └─ use-toast.ts
+│  ├─ lib/
+│  │  ├─ translate.ts
+│  │  ├─ translations.ts
+│  │  └─ utils.ts
+│  └─ store/
+│     ├─ use-editor-store.ts
+│     └─ use-language-store.ts
+├─ .dockerignore
+├─ .eslintrc.json
+├─ .gitignore
+├─ components.json
+├─ desktop.ini
+├─ docker-compose.yml
+├─ Dockerfile
+├─ gemini.md
+├─ image.png
+├─ next.config.ts
+├─ package-lock.json
+├─ package.json
+├─ postcss.config.mjs
+├─ README.md
+├─ tailwind.config.ts
+└─ tsconfig.json
+
+```
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -247,9 +434,3 @@ To learn more about Next.js, take a look at the following resources:
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Render
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
