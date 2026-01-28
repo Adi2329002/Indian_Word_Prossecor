@@ -71,8 +71,12 @@
     "convex": "^1.31.5",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
+    "file-saver": "^2.0.5",
+    "html-docx-js-typescript": "^0.1.5",
+    "html2pdf.js": "^0.14.0",
     "input-otp": "^1.4.2",
     "lib0": "^0.2.117",
+    "lodash": "^4.17.23",
     "lucide-react": "^0.556.0",
     "next": "^15.0.3",
     "next-themes": "^0.4.6",
@@ -94,6 +98,8 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/lodash": "^4.17.23",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
