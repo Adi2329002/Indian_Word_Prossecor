@@ -16,7 +16,7 @@ const supportedLanguages: Language[] = [
     { code: 'as', name: 'Assamese' },
     { code: 'bn', name: 'Bengali' },
     { code: 'gu', name: 'Gujarati' },
-{ code: 'hi-IN', name: 'Hindi' },
+{ code: 'hi', name: 'Hindi' },
     { code: 'kn', name: 'Kannada' },
     { code: 'ml', name: 'Malayalam' },
     { code: 'mr', name: 'Marathi' },
