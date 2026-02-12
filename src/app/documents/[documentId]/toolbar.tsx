@@ -81,6 +81,7 @@ export const Toolbar = () => {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [searchText, setSearchText] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
+  const [isTranslating, setIsTranslating] = useState(false);
   // 2. Create a reference to hold the recognition object
   const recognitionRef = useRef<any>(null);
   useEffect(() => {
@@ -158,19 +159,40 @@ const handleVoiceTyping = useCallback(() => {
     recognition.start()
   }, [editor, isListening, language])
 
-  const handleTranslate = useCallback(async () => {
-    if (!editor) return;
-    const text = editor.getText();
-    if (!text) return;
+const handleTranslate = useCallback(async () => {
+  // Check if editor exists and we aren't already busy
+  if (!editor || isTranslating) return;
 
-    try {
-      const translatedText = await translateText(text, 'en', language.code);
+  // 1. Get selection (Faster: translating 10 words is instant vs 1000 words)
+  const { from, to } = editor.state.selection;
+  const selectedText = editor.state.doc.textBetween(from, to, " ");
+  
+  // 2. Fallback to whole document if nothing is selected
+  const textToTranslate = selectedText || editor.getText();
+  
+  if (!textToTranslate || textToTranslate.trim().length === 0) return;
+
+  setIsTranslating(true);
+
+  try {
+    const translatedText = await translateText(textToTranslate, 'en', language.code);
+    
+    if (selectedText) {
+      // Replace only what was selected
+      editor.chain().focus().insertContent(translatedText).run();
+    } else {
+      // Replace everything
       editor.chain().focus().setContent(translatedText).run();
-    } catch (error) {
-      console.error("Translation failed", error);
-      alert("Translation failed. Please try again.");
     }
-  }, [editor, language]);
+  } catch (error) {
+    console.error("Translation failed", error);
+    alert("Service busy. Please try again in a moment.");
+  } finally {
+    setIsTranslating(false);
+  }
+  // Remove isTranslating from here to stop the ESLint warning 
+  // and prevent unnecessary function re-creations.
+}, [editor, language.code]);
 
   const handleReadAloud = useCallback(() => {
     if (!("speechSynthesis" in window)) {

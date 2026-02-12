@@ -1,26 +1,30 @@
-export const translateText = async (
-  text: string,
-  source: string,
-  target: string
-): Promise<string> => {
+"use server";
+
+export const translateText = async (text: string, source: string, target: string): Promise<string> => {
+  if (!text.trim()) return "";
+
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${source}&tl=${target}&dt=t&q=${encodeURIComponent(text)}`;
+
   try {
-    // Using Google Translate's unofficial free endpoint
-    // sl = source language, tl = target language, q = query text
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${source}&tl=${target}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        // Masquerading as a browser helps prevent 429 errors
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      next: { revalidate: 3600 } // Cache results for 1 hour to save hits
+    });
 
-    const res = await fetch(url);
-
-    if (!res.ok) {
-      throw new Error(`Translation API request failed with status ${res.status}`);
+    if (res.status === 429) {
+      throw new Error("RATE_LIMIT_EXCEEDED");
     }
 
-    const data = await res.json();
-    
-    // Google returns a nested array. The translation is at data[0][0][0]
-    return data[0][0][0]; 
+    if (!res.ok) throw new Error("API_FAILURE");
 
+    const data = await res.json();
+    return data[0].map((part: any) => part[0]).join("");
   } catch (error) {
-    console.error("Translation failed:", error);
+    console.error("Translation Error:", error);
     throw error;
   }
 };
