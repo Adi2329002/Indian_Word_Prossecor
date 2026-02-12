@@ -41,6 +41,7 @@ import {
   ScissorsIcon,
   ClipboardIcon,
   Languages,
+  PresentationIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
@@ -82,6 +83,7 @@ export const Toolbar = () => {
   const [searchText, setSearchText] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
   const [isTranslating, setIsTranslating] = useState(false);
+  const { isPresentationMode, togglePresentationMode } = useEditorStore();
   // 2. Create a reference to hold the recognition object
   const recognitionRef = useRef<any>(null);
   useEffect(() => {
@@ -369,7 +371,7 @@ const handleTranslate = useCallback(async () => {
       </div>
 
       {/* Toolbar Content */}
-      <div className="flex items-center gap-x-2 px-3 py-2 bg-slate-200 border-t border-neutral-200 flex-wrap">
+      <div className="flex items-center gap-x-1.5 px-3 py-2 bg-slate-200 border-t border-neutral-200 flex-wrap">
         {/* FILE TAB */}
         {activeTab === "file" && (
           <>
@@ -421,6 +423,11 @@ const handleTranslate = useCallback(async () => {
             <ToolbarButton icon={Undo2Icon} onClick={() => editor.chain().focus().undo().run()} tooltip="Undo / पूर्ववत" disabled={!editor.can().undo()} />
             <ToolbarButton icon={Redo2Icon} onClick={() => editor.chain().focus().redo().run()} tooltip="Redo / फिर से" disabled={!editor.can().redo()} />
             <Separator orientation="vertical" className="h-6 mx-1" />
+            <ToolbarButton
+              icon={PresentationIcon}
+              onClick={togglePresentationMode}
+              tooltip="Preview / पूर्वावलोकन"
+            />
 
             {/* Clipboard */}
             <ToolbarButton icon={ScissorsIcon} onClick={() => document.execCommand("cut")} tooltip="Cut / काटें" />
