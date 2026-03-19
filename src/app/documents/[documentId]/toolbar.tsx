@@ -3,6 +3,8 @@ import { ZoomIn, ZoomOut } from "lucide-react";
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useEditorStore } from "@/store/use-editor-store"
 import { useLanguageStore } from "@/store/use-language-store"
+import { useMutation } from "convex/react"; // 1. Import the hook
+import { api } from "../../../../convex/_generated/api"; // 2. Import your API
 import { useTheme } from "next-themes"
 import {
   Undo2Icon, Redo2Icon, BoldIcon, ItalicIcon, UnderlineIcon, Mic, Volume2Icon,
@@ -26,7 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { translateText } from "@/lib/translate"
 import { generateSpeech } from "@/lib/tts"
-
+import { Doc } from "../../../../convex/_generated/dataModel";
 const FONT_SIZES = ["10", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "72"]
 
 const TEXT_COLORS = [
@@ -49,12 +51,14 @@ const menuTranslations = {
   Tools: { en: "Tools", hi: "उपकरण", bn: "সরঞ্জাম", ta: "கருவிகள்", te: "సాధనాలు", mr: "साधने", gu: "સાધनों", kn: "ಉಪಕರಣಗಳು", ml: "ഉപകരണങ്ങൾ", pa: "ਟੂਲ" },
   Help: { en: "Help", hi: "मदद", bn: "সাহায্য", ta: "உதவி", te: "సహాయం", mr: "मदत", gu: "મદદ", kn: "ಸಹಾಯ", ml: "സഹായം", pa: "ਮਦਦ" },
 }
-
-export const Toolbar = () => {
+interface ToolbarProps {
+  initialData: Doc<"documents">;
+}
+export const Toolbar = ({ initialData }: ToolbarProps) => {
   const { editor, zoom, setZoom, togglePresentationMode, isAiSidebarOpen, toggleAiSidebar } = useEditorStore();
   const { language, supportedLanguages, setLanguage } = useLanguageStore()
   const { theme, setTheme } = useTheme();
-  
+  const [title, setTitle] = useState(initialData?.title || "Untitled Document");
   const [isListening, setIsListening] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [linkUrl, setLinkUrl] = useState("")
@@ -63,7 +67,7 @@ export const Toolbar = () => {
   const recognitionRef = useRef<any>(null);
   
   useEffect(() => { return () => { if (recognitionRef.current) recognitionRef.current.stop() } }, [])
-
+  const update = useMutation(api.documents.update);
   const indianFonts = [
     { label: "Hindi (Mangal)", value: "Mangal" },
     { label: "Hindi (Devanagari)", value: "Noto Sans Devanagari" },
@@ -78,6 +82,16 @@ export const Toolbar = () => {
     { label: "English (Arial)", value: "Arial" },
     { label: "English (Times)", value: "Times New Roman" },
   ]
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const onTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTitle = e.target.value;
+    setTitle(newTitle);
+    // Debounced or onBlur update to Convex
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+    update({ id: initialData._id, title: newTitle || "Untitled Document" });
+  }, 500);
+  };
 
   const handleVoiceTyping = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -234,8 +248,12 @@ export const Toolbar = () => {
           </div>
           
           <div className="flex flex-col justify-center">
-            <Input type="text" defaultValue="Untitled Document" className="h-6 w-fit bg-transparent text-foreground border-transparent hover:border-border focus:border-blue-500 px-1 py-0 shadow-none text-sm font-medium focus-visible:ring-0" />
-            
+           <Input 
+          type="text" 
+          value={title} // Use the dynamic title
+          onChange={onTitleChange} // Allow editing from here too
+          className="h-6 w-fit bg-transparent text-foreground border-transparent hover:border-border focus:border-blue-500 px-1 py-0 shadow-none text-sm font-medium focus-visible:ring-0" 
+            />
             <div className="flex items-center gap-1 mt-0.5">
                <TopMenu label={getMenuName("File")}>
                  <TopMenuItem icon={ShareIcon} label="Share" hasSubmenu onClick={() => alert("Mock: Open Share dialog")} />

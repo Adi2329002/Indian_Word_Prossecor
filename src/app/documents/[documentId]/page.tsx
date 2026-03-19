@@ -42,7 +42,7 @@ export default function DocumentIdPage({ params }: DocumentIdPageProps) {
         {/* Top Area (Menu + Toolbar) -> Flex Shrink prevents it from collapsing */}
         {!isPresentationMode && (
           <div className="flex-shrink-0 z-50 shadow-sm print:hidden">
-            <Toolbar />
+            <Toolbar initialData={document}/>
           </div>
         )}
 

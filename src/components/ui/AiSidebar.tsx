@@ -23,12 +23,15 @@ export const AiSidebar = () => {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          prompt: `Using the following document context: "${editor?.getText()}", please: ${prompt}` 
+        }),
       });
-      
+      if (!res.ok) throw new Error("API Limit reached or connection lost");
       const data = await res.json();
       setResponse(data.text || "This is a placeholder AI response. Connect your API to see real results!");
     } catch (error) {
+      console.error(error);
       setResponse("Failed to generate response. Please check your API connection.");
     } finally {
       setIsLoading(false);

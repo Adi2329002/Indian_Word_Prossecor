@@ -114,3 +114,28 @@ export const update = mutation({
     return document;
   },
 });
+
+// 5. Function to DELETE a document
+export const remove = mutation({
+  args: { id: v.id("documents") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const existingDocument = await ctx.db.get(args.id);
+
+    if (!existingDocument) {
+      throw new Error("Not found");
+    }
+
+    // Security check: Only the owner can delete their own document
+    if (existingDocument.ownerId !== identity.subject) {
+      throw new Error("Unauthorized: Only the owner can delete this document");
+    }
+
+    await ctx.db.delete(args.id);
+    return { success: true };
+  },
+});
