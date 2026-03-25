@@ -22,8 +22,8 @@ import Subscript from "@tiptap/extension-subscript"
 import Superscript from "@tiptap/extension-superscript"
 import Placeholder from "@tiptap/extension-placeholder"
 import { useLiveblocksExtension } from "@liveblocks/react-tiptap";
-import { Extension } from "@tiptap/core"
-
+import { Extension } from "@tiptap/core" // ADDED: Core extension utility
+import CharacterCount from '@tiptap/extension-character-count'
 // --- CUSTOM FONT SIZE EXTENSION ---
 const FontSize = Extension.create({
   name: 'fontSize',
@@ -166,6 +166,7 @@ export const Editor = ({ initialContent }: EditorProps) => {
       Placeholder.configure({
         placeholder: "यहाँ टाइप करें... Start typing here...",
       }),
+      CharacterCount
     ],
     immediatelyRender: false,
   })

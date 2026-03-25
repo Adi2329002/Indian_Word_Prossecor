@@ -1,25 +1,25 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-// 1. Function to CREATE a new blank document (UPDATED FOR TEMPLATES)
+// 1. Function to CREATE a new blank document
+// convex/documents.ts
 export const create = mutation({
   args: { 
-    title: v.string(),
-    initialContent: v.optional(v.string()) // NEW: Allow frontend to pass template JSON
-  }, 
+    title: v.string(), 
+    initialContent: v.optional(v.string()) // Add this
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
     }
-
+    // ... auth check ...
     const documentId = await ctx.db.insert("documents", {
       title: args.title,
       ownerId: identity.subject,
       // NEW: Use the provided template content, OR default to a safe blank TipTap document
       initialContent: args.initialContent || '{"type":"doc","content":[{"type":"paragraph"}]}',
     });
-
     return documentId;
   },
 });
@@ -48,7 +48,7 @@ export const getById = query({
     const document = await ctx.db.get(args.documentId);
 
     if (!document) {
-      throw new Error("Not found");
+      return null;
     }
     if (!identity) {
       throw new Error("Unauthorized: You must be logged in to view this document");
@@ -138,5 +138,39 @@ export const remove = mutation({
 
     await ctx.db.delete(args.id);
     return { success: true };
+  },
+});
+
+// convex/documents.ts
+
+// Save a snapshot of the current document
+export const createVersion = mutation({
+  args: { 
+    documentId: v.id("documents"), 
+    content: v.string(),
+    title: v.string() 
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+
+    return await ctx.db.insert("versions", {
+      documentId: args.documentId,
+      title: args.title,
+      content: args.content,
+      authorId: identity.subject,
+    });
+  },
+});
+
+// Get all versions for a specific document
+export const getVersions = query({
+  args: { documentId: v.id("documents") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("versions")
+      .withIndex("by_document", (q) => q.eq("documentId", args.documentId))
+      .order("desc") // Newest first
+      .collect();
   },
 });

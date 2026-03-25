@@ -6,6 +6,8 @@ import { useLanguageStore } from "@/store/use-language-store"
 import { useMutation } from "convex/react"; 
 import { api } from "../../../../convex/_generated/api"; 
 import { useTheme } from "next-themes"
+import { useQuery } from "convex/react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import {
   Undo2Icon, Redo2Icon, BoldIcon, ItalicIcon, UnderlineIcon, Mic, Volume2Icon,
   AlignLeftIcon, AlignCenterIcon, AlignRightIcon, AlignJustifyIcon, TableIcon,
@@ -29,7 +31,12 @@ import { Button } from "@/components/ui/button"
 import { translateText } from "@/lib/translate"
 import { generateSpeech } from "@/lib/tts"
 import { Doc } from "../../../../convex/_generated/dataModel";
-
+import { useRouter } from "next/navigation"; // To redirect after 'New' or 'Delete'
+import { toast } from "sonner"; // Assuming you use sonner for notifications
+import { 
+  Dialog, DialogContent, DialogDescription, 
+  DialogHeader, DialogTitle, DialogFooter 
+} from "@/components/ui/dialog"
 const FONT_SIZES = ["10", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "72"]
 
 const TEXT_COLORS = [
@@ -68,11 +75,32 @@ export const Toolbar = ({ initialData }: ToolbarProps) => {
   const [searchText, setSearchText] = useState("") 
   const [isTranslating, setIsTranslating] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const router = useRouter();
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [targetEmail, setTargetEmail] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [details, setDetails] = useState<{
+  words: number;
+  characters: number;
+  created: string;
+  title: string;
+  owner: string;
+} | null>(null);
+
   
+
   useEffect(() => { return () => { if (recognitionRef.current) recognitionRef.current.stop() } }, [])
   
   const update = useMutation(api.documents.update);
-  
+  const create = useMutation(api.documents.create);
+  const remove = useMutation(api.documents.remove);
+
+  const [isPageSetupOpen, setIsPageSetupOpen] = useState(false);
+  const { isLandscape, setOrientation } = useEditorStore();
+
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const createVersion = useMutation(api.documents.createVersion);
+  const versions = useQuery(api.documents.getVersions, { documentId: initialData._id }) || [];
   const indianFonts = [
     { label: "Hindi (Mangal)", value: "Mangal" },
     { label: "Hindi (Devanagari)", value: "Noto Sans Devanagari" },
@@ -87,7 +115,76 @@ export const Toolbar = ({ initialData }: ToolbarProps) => {
     { label: "English (Arial)", value: "Arial" },
     { label: "English (Times)", value: "Times New Roman" },
   ]
+
+  const onSaveVersion = async () => {
+  try {
+    await createVersion({
+      documentId: initialData._id,
+      title: title,
+      content: editor?.getHTML() || "",
+    });
+    toast.success("Version snapshot saved!");
+  } catch (error) {
+    toast.error("Failed to save version.");
+  }
+};
+
+const onOpenDetails = () => {
+  const stats = editor?.storage.characterCount;
+  setDetails({
+    words: stats?.words() || 0,
+    characters: stats?.characters() || 0,
+    created: new Date(initialData._creationTime).toLocaleString(),
+    title: title,
+    owner: "You",
+  });
+};
+
+const onRestoreVersion = async (version: any) => {
+  if (window.confirm("Restore this version? Current unsaved changes will be lost.")) {
+    editor?.commands.setContent(version.content);
+    setTitle(version.title);
+    // Also update the main document in Convex
+    await update({ id: initialData._id, title: version.title });
+    toast.success("Document restored!");
+    setIsHistoryOpen(false);
+  }
+};
+
+
+  const onAddShortcut = () => {
+  const shortcutData = `[InternetShortcut]\nURL=${window.location.href}`;
+  const blob = new Blob([shortcutData], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${title}.url`;
+  link.click();
+  toast.success("Shortcut created! You can now drag this file into Google Drive.");
+};
+
+  const onEmailSubmit = () => {
+  if (!targetEmail) return;
+
+  const subject = encodeURIComponent(`BharatDocs: ${title}`);
   
+  // Get the text content from TipTap
+  const content = editor?.getText() || "";
+  const body = encodeURIComponent(
+    `I am sharing a document with you from BharatDocs:\n\n${content}\n\nSent via BharatDocs`
+  );
+
+  // This link tells Google to open a "Compose" window with your data
+  const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&to=${targetEmail}&su=${subject}&body=${body}`;
+
+  // Open in a new tab so the user doesn't lose their current document
+  window.open(gmailLink, "_blank");
+
+  // Cleanup UI
+  setIsEmailModalOpen(false);
+  setTargetEmail("");
+  toast.success("Opening Gmail Compose...");
+};
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const onTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,6 +315,74 @@ export const Toolbar = ({ initialData }: ToolbarProps) => {
     const url = `https://quickchart.io/chart?c=${encodedConfig}&w=500&h=300`;
     editor?.chain().focus().setImage({ src: url }).run();
   };
+
+  const onNew = async () => {
+    try {
+      const documentId = await create({ title: "Untitled Document" });
+      router.push(`/documents/${documentId}`);
+      toast.success("New document created!");
+    } catch (error) {
+      toast.error("Failed to create new document.");
+    }
+  };
+
+  const onCopy = async () => {
+    try {
+      const documentId = await create({ 
+        title: `Copy of ${initialData.title}`,
+        // Note: You might need to update your 'create' mutation to accept 'initialContent' 
+        // if you want to copy the TipTap content as well.
+      });
+      router.push(`/documents/${documentId}`);
+      toast.success("Copy created!");
+    } catch (error) {
+      toast.error("Failed to copy document.");
+    }
+  };
+
+  const onRename = () => {
+    const newTitle = window.prompt("Enter new title:", title);
+    if (newTitle && newTitle !== title) {
+      setTitle(newTitle);
+      update({ id: initialData._id, title: newTitle });
+    }
+  };
+
+  const onDelete = async () => {
+    const confirmed = window.confirm("Are you sure you want to delete this document?");
+    if (!confirmed) return;
+    
+    try {
+      await remove({ id: initialData._id });
+      router.replace("/");
+      toast.success("Document deleted.");
+    } catch (error) {
+      toast.error("Failed to delete document.");
+    }
+  };
+
+  const onDownloadJSON = () => {
+    const content = editor?.getJSON();
+    const blob = new Blob([JSON.stringify(content)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title}.json`;
+    a.click();
+  };
+  const onEmailDocument = async () => {
+  const email = window.prompt("Enter recipient email:");
+  if (!email) return;
+
+  const content = editor?.getHTML();
+  
+  const response = await fetch("/api/send-email", {
+    method: "POST",
+    body: JSON.stringify({ to: email, subject: title, html: content }),
+  });
+
+  if (response.ok) alert("Email sent successfully!");
+};
 
   const handleVoiceTyping = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -416,55 +581,68 @@ export const Toolbar = ({ initialData }: ToolbarProps) => {
                
                {/* --- COMPLETELY REBUILT FILE MENU --- */}
                <TopMenu label={getMenuName("File")}>
-                 <TopMenuSubItem icon={FilePlusIcon} label="New">
-                    <TopMenuItem label="Document" onClick={() => window.open('/', '_blank')} />
-                 </TopMenuSubItem>
-                 <TopMenuItem icon={FileIcon} label="Open" shortcut="Ctrl+O" onClick={handleOpenFile} />
-                 <TopMenuItem icon={Layers3Icon} label="Make a copy" onClick={handleMakeCopy} />
-                 <MenuDivider />
-                 
-                 <TopMenuSubItem icon={ShareIcon} label="Share">
-                   <TopMenuItem label="Share with others" onClick={handleShare} />
-                   <TopMenuItem label="Publish to web" onClick={() => alert("Public routing setup required.")} />
-                 </TopMenuSubItem>
-                 
-                 <TopMenuSubItem icon={MailIcon} label="Email">
-                   <TopMenuItem label="Email this file" onClick={handleEmail} />
-                 </TopMenuSubItem>
+                 {/* --- CORE ACTIONS --- */}
+  <TopMenuSubItem icon={FilePlusIcon} label="New">
+    <TopMenuItem label="Document" onClick={() => window.open('/', '_blank')} />
+  </TopMenuSubItem>
 
-                 <TopMenuSubItem icon={DownloadIcon} label="Download">
-                   <TopMenuItem label="PDF document (.pdf)" onClick={handlePrint} />
-                   <TopMenuItem label="Web page (.html)" onClick={handleDownloadHTML} />
-                   <TopMenuItem label="Plain text (.txt)" onClick={handleDownloadText} />
-                 </TopMenuSubItem>
-                 
-                 <MenuDivider />
-                 
-                 <TopMenuItem icon={PenSquareIcon} label="Rename" onClick={() => document.getElementById("document-title-input")?.focus()} />
-                 <TopMenuItem icon={ArrowLeftRightIcon} label="Move" onClick={() => alert("Google Drive API integration required.")} />
-                 <TopMenuItem icon={FolderPlusIcon} label="Add a shortcut to Drive" onClick={() => alert("Google Drive API integration required.")} />
-                 <TopMenuItem icon={Trash2Icon} label="Move to bin" onClick={() => alert("Please delete this document directly from your dashboard.")} />
-                 
-                 <MenuDivider />
-                 
-                 <TopMenuSubItem icon={HistoryIcon} label="Version history">
-                   <TopMenuItem label="See version history" onClick={() => alert("Requires Liveblocks History API setup.")} />
-                 </TopMenuSubItem>
-                 <TopMenuItem icon={CloudDownloadIcon} label="Make available offline" onClick={() => alert("Offline mode requires PWA setup.")} />
-                 
-                 <MenuDivider />
-                 
-                 <TopMenuItem icon={InfoIcon} label="Details" onClick={handleDetails} />
-                 <TopMenuItem icon={ShieldAlertIcon} label="Security limitations" onClick={() => alert("Document is end-to-end encrypted via Convex & Liveblocks.")} />
-                 
-                 <TopMenuSubItem icon={GlobeIcon} label="Language">
-                    {supportedLanguages.map(lang => (
-                        <TopMenuItem key={lang.code} label={lang.name} onClick={() => setLanguage(lang)} />
-                    ))}
-                 </TopMenuSubItem>
-                 
-                 <TopMenuItem icon={Settings2Icon} label="Page setup" onClick={() => alert("Custom CSS extension required for page margins.")} />
-                 <TopMenuItem icon={PrinterIcon} label="Print" shortcut="Ctrl+P" onClick={handlePrint} />
+  <TopMenuItem icon={FileIcon} label="Open" shortcut="Ctrl+O" onClick={handleOpenFile} />
+  <TopMenuItem icon={Layers3Icon} label="Make a copy" onClick={handleMakeCopy || onCopy} />
+
+  <MenuDivider />
+
+  {/* --- SHARE --- */}
+  <TopMenuSubItem icon={ShareIcon} label="Share">
+    <TopMenuItem label="Share with others" onClick={handleShare} />
+    <TopMenuItem label="Publish to web" onClick={() => alert("Public routing setup required.")} />
+  </TopMenuSubItem>
+
+  {/* --- EMAIL --- */}
+  <TopMenuSubItem icon={MailIcon} label="Email">
+    <TopMenuItem label="Email this file" onClick={handleEmail || (() => setIsEmailModalOpen(true))} />
+  </TopMenuSubItem>
+
+  {/* --- DOWNLOAD --- */}
+  <TopMenuSubItem icon={DownloadIcon} label="Download">
+    <TopMenuItem label="PDF document (.pdf)" onClick={handlePrint} />
+    <TopMenuItem label="Web page (.html)" onClick={handleDownloadHTML} />
+    <TopMenuItem label="Plain text (.txt)" onClick={handleDownloadText} />
+  </TopMenuSubItem>
+
+  <MenuDivider />
+
+  {/* --- FILE MANAGEMENT --- */}
+  <TopMenuItem icon={PenSquareIcon} label="Rename" onClick={() => document.getElementById("document-title-input")?.focus()} />
+  <TopMenuItem icon={FolderPlusIcon} label="Add shortcut to Drive" onClick={onAddShortcut || (() => alert("Google Drive API integration required."))} />
+  <TopMenuItem icon={Trash2Icon} label="Move to bin" onClick={onDelete || (() => alert("Delete from dashboard."))} />
+
+  <MenuDivider />
+
+  {/* --- VERSION CONTROL (IMPORTANT ADDITION) --- */}
+  <TopMenuSubItem icon={HistoryIcon} label="Version history">
+    <TopMenuItem label="Save Current Version" onClick={onSaveVersion} />
+    <TopMenuItem label="See Version history" shortcut="Ctrl+Alt+H" onClick={() => setIsHistoryOpen(true)} />
+  </TopMenuSubItem>
+
+  <TopMenuItem icon={CloudDownloadIcon} label="Make available offline" onClick={() => alert("Offline mode requires PWA setup.")} />
+
+  <MenuDivider />
+
+  {/* --- DETAILS --- */}
+  <TopMenuItem icon={InfoIcon} label="Details" onClick={handleDetails || onOpenDetails} />
+
+  {/* --- LANGUAGE --- */}
+  <TopMenuSubItem icon={GlobeIcon} label="Language">
+    {supportedLanguages.map(lang => (
+      <TopMenuItem key={lang.code} label={lang.name} onClick={() => setLanguage(lang)} />
+    ))}
+  </TopMenuSubItem>
+
+  {/* --- SETTINGS --- */}
+  <TopMenuItem icon={Settings2Icon} label="Page setup" onClick={() => setIsPageSetupOpen(true)} />
+
+  {/* --- PRINT --- */}
+  <TopMenuItem icon={PrinterIcon} label="Print" shortcut="Ctrl+P" onClick={handlePrint} />
                </TopMenu>
 
                <TopMenu label={getMenuName("Edit")}>
@@ -850,7 +1028,189 @@ export const Toolbar = ({ initialData }: ToolbarProps) => {
           </div>
 
         </div>
+        {/* CUSTOM EMAIL MODAL */}
+                <Dialog open={isEmailModalOpen} onOpenChange={setIsEmailModalOpen}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Email Document</DialogTitle>
+                      <DialogDescription>
+                        Send a copy of "{title}" as an HTML email.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex items-center space-x-2 py-4">
+                      <Input
+                        type="email"
+                        placeholder="recipient@example.com"
+                        value={targetEmail}
+                        onChange={(e) => setTargetEmail(e.target.value)}
+                        disabled={isSending}
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="secondary" onClick={() => setIsEmailModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={onEmailSubmit} disabled={isSending}>
+                        {isSending ? "Sending..." : "Send Email"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
       </div>
+      <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+  <SheetContent className="w-[400px] sm:w-[540px]">
+    <SheetHeader className="border-b pb-4">
+      <SheetTitle className="flex items-center gap-2">
+        <HistoryIcon className="size-5 text-blue-600" />
+        Version History
+      </SheetTitle>
+      <SheetDescription>
+        View and restore previous snapshots of this document.
+      </SheetDescription>
+    </SheetHeader>
+
+    <div className="flex flex-col gap-4 mt-6 overflow-y-auto h-[calc(100vh-150px)]">
+      {versions.map((version) => (
+        <div 
+          key={version._id} 
+          className="group flex flex-col gap-2 p-4 rounded-lg border border-border hover:bg-muted transition-all cursor-pointer"
+          onClick={() => onRestoreVersion(version)}
+        >
+          <div className="flex justify-between items-start">
+            <span className="font-bold text-sm">{version.title}</span>
+            <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+              Snapshot
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {new Date(version._creationTime).toLocaleString()}
+          </div>
+          <Button variant="link" className="p-0 h-fit text-xs text-blue-600 self-start opacity-0 group-hover:opacity-100 transition-opacity">
+            Restore this version
+          </Button>
+        </div>
+      ))}
+      {versions.length === 0 && (
+        <p className="text-center text-muted-foreground text-sm mt-10">
+          No snapshots found. Click "Save Current Version" to create one.
+        </p>
+      )}
+    </div>
+  </SheetContent>
+</Sheet>
+{/* --- DOCUMENT DETAILS DIALOG --- */}
+<Dialog open={!!details} onOpenChange={(open) => !open && setDetails(null)}>
+  <DialogContent className="max-w-md bg-background border-none shadow-2xl">
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2 text-xl font-normal">
+        <InfoIcon className="size-5 text-blue-600" />
+        Document details
+      </DialogTitle>
+    </DialogHeader>
+
+    {details && (
+      <div className="py-4 space-y-3">
+        <div className="grid grid-cols-2 py-2 border-b border-border/50">
+          <span className="text-sm font-medium text-muted-foreground">Title</span>
+          <span className="text-sm text-right font-semibold">{details.title}</span>
+        </div>
+        <div className="grid grid-cols-2 py-2 border-b border-border/50">
+          <span className="text-sm font-medium text-muted-foreground">Word count</span>
+          <span className="text-sm text-right font-mono text-blue-600">{details.words}</span>
+        </div>
+        {/* ... Add other rows using details.characters, details.created, etc. ... */}
+      </div>
+    )}
+
+    <DialogFooter>
+      <Button 
+        onClick={() => setDetails(null)} 
+        className="rounded-full px-8 bg-blue-600 hover:bg-blue-700 text-white"
+      >
+        Close
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+{/* --- PAGE SETUP DIALOG --- */}
+<Dialog open={isPageSetupOpen} onOpenChange={setIsPageSetupOpen}>
+  <DialogContent className="max-w-[450px] bg-background border-none shadow-2xl p-0 overflow-hidden">
+    <div className="p-6">
+      <DialogTitle className="text-xl font-normal mb-6 text-foreground">Page setup</DialogTitle>
+      
+      <div className="space-y-8">
+        {/* Orientation Section */}
+        <div className="space-y-3">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Orientation</h4>
+          <div className="flex gap-10">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input 
+                type="radio" 
+                name="orientation" 
+                checked={!isLandscape} 
+                onChange={() => setOrientation(false)}
+                className="size-4 accent-blue-600 cursor-pointer"
+              />
+              <span className="text-sm font-medium text-foreground group-hover:text-blue-600 transition-colors">Portrait</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input 
+                type="radio" 
+                name="orientation" 
+                checked={isLandscape} 
+                onChange={() => setOrientation(true)}
+                className="size-4 accent-blue-600 cursor-pointer"
+              />
+              <span className="text-sm font-medium text-foreground group-hover:text-blue-600 transition-colors">Landscape</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Paper Size Section (Visual Placeholder) */}
+        <div className="space-y-3">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Paper size</h4>
+          <div className="relative">
+            <select disabled className="w-full bg-muted/40 border border-border rounded-md px-3 py-2 text-sm appearance-none cursor-not-allowed opacity-70">
+              <option>Letter (8.5" x 11")</option>
+              <option>A4 (210mm x 297mm)</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-2.5 size-4 text-muted-foreground" />
+          </div>
+        </div>
+
+        {/* Page Color Section */}
+        <div className="space-y-3">
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Page color</h4>
+          <div className="flex items-center gap-4">
+            <div className="size-8 rounded-full border border-border bg-white shadow-sm ring-2 ring-offset-2 ring-blue-600/20" />
+            <Button variant="outline" size="sm" disabled className="text-[11px] h-7 rounded-full px-4 border-slate-300">
+              Change color
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="p-4 border-t border-border flex justify-end gap-2 bg-muted/10">
+      <Button 
+        variant="ghost" 
+        onClick={() => setIsPageSetupOpen(false)}
+        className="text-blue-600 hover:text-blue-700 font-bold px-6 hover:bg-transparent"
+      >
+        Cancel
+      </Button>
+      <Button 
+        onClick={() => setIsPageSetupOpen(false)}
+        className="rounded-full px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-md"
+      >
+        OK
+      </Button>
+    </div>
+  </DialogContent>
+</Dialog>
     </TooltipProvider>
+    
+    
   )
+  
 }
